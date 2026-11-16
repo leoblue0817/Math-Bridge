@@ -10,11 +10,15 @@ import {
   SlidersHorizontal,
   Star,
   Sun,
+  Swords,
   Trophy,
   User,
 } from 'lucide-react';
 import { SECTORS, getSectorStarStats, getTotalSystemStars } from '../data/sectors';
 import { AppMode, ProfileRecord, SectorId, ThemeMode } from '../types';
+import { soundEngine } from '../utils/soundEngine';
+import { AchievementWallBar } from './AchievementWallBar';
+import { AudioToggleButtons } from './AudioToggleButtons';
 
 interface PlanetHomeViewProps {
   profile: ProfileRecord;
@@ -23,6 +27,7 @@ interface PlanetHomeViewProps {
   wrongCount: number;
   onSelectSector: (id: SectorId) => void;
   onSwitchToGrid: () => void;
+  onOpenBattle: () => void;
   onToggleTheme: (t: ThemeMode) => void;
   onChangeMode: (m: AppMode) => void;
   onOpenProgressModal: () => void;
@@ -222,6 +227,7 @@ export function PlanetHomeView({
   wrongCount,
   onSelectSector,
   onSwitchToGrid,
+  onOpenBattle,
   onToggleTheme,
   onChangeMode,
   onOpenProgressModal,
@@ -276,8 +282,23 @@ export function PlanetHomeView({
     return () => cancelAnimationFrame(rafId);
   }, [isDark, effectivePaused]);
 
+  const handleHoverPlanet = (id: SectorId | null) => {
+    setHoveredSector((prev) => {
+      if (id && id !== prev) {
+        soundEngine.playHoverLock();
+      }
+      return id;
+    });
+  };
+
+  const handleEnterSector = (id: SectorId) => {
+    soundEngine.unlockIfNeeded();
+    soundEngine.playWarp();
+    onSelectSector(id);
+  };
+
   const focusIslandOnMap = (id: SectorId) => {
-    setHoveredSector(id);
+    handleHoverPlanet(id);
     if (!isDark) {
       const geo = PLANET_META[id];
       setRotLon(geo.lon);
@@ -446,9 +467,26 @@ export function PlanetHomeView({
             </button>
           </div>
 
+          <AudioToggleButtons compact />
+
           <button
             type="button"
-            onClick={onSwitchToGrid}
+            onClick={() => {
+              soundEngine.playClick();
+              onOpenBattle();
+            }}
+            className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-xl bg-amber-500 px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-amber-600 dark:bg-amber-400 dark:text-slate-950 dark:hover:bg-amber-300"
+          >
+            <Swords className="h-3.5 w-3.5" aria-hidden="true" />
+            <span>線上搶答對戰</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              soundEngine.playClick();
+              onSwitchToGrid();
+            }}
             className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:border-sky-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-cyan-400"
           >
             <LayoutGrid className="h-3.5 w-3.5" aria-hidden="true" />
@@ -456,6 +494,9 @@ export function PlanetHomeView({
           </button>
         </div>
       </div>
+
+      {/* Achievement Badges Wall Bar */}
+      <AchievementWallBar profile={profile} theme={theme} />
 
       {/* 70% Main Visual Stage (col-span-8) + 30% Streamlined Sidebar (col-span-4) */}
       <div className="grid grid-cols-1 items-center gap-6 lg:grid-cols-12">
@@ -523,10 +564,79 @@ export function PlanetHomeView({
                       </g>
                     );
                   })}
+                  <linearGradient id="radarSweepGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#22D3EE" stopOpacity="0.28" />
+                    <stop offset="65%" stopColor="#0EA5E9" stopOpacity="0.06" />
+                    <stop offset="100%" stopColor="#0EA5E9" stopOpacity="0" />
+                  </linearGradient>
                 </defs>
 
                 {/* Deep Nebula Backdrop */}
                 <circle cx="340" cy="340" r="325" fill="url(#nebulaAura)" />
+
+                {/* Outer Degree Compass Reticle Ring */}
+                <g
+                  className="animate-cloud-drift"
+                  style={{
+                    transformOrigin: '340px 340px',
+                    animationDuration: '120s',
+                    animationPlayState: effectivePaused ? 'paused' : 'running',
+                  }}
+                >
+                  <circle
+                    cx="340"
+                    cy="340"
+                    r="328"
+                    fill="none"
+                    stroke="#38BDF8"
+                    strokeOpacity="0.22"
+                    strokeWidth="1"
+                    strokeDasharray="2 10"
+                  />
+                  {[0, 45, 90, 135, 180, 225, 270, 315].map((deg) => (
+                    <g key={`deg-${deg}`} transform={`rotate(${deg} 340 340)`}>
+                      <line x1="340" y1="7" x2="340" y2="16" stroke="#38BDF8" strokeOpacity="0.5" strokeWidth="1.5" />
+                      <text x="340" y="27" textAnchor="middle" fill="#64748B" fontSize="8.5" fontFamily="monospace">
+                        {deg}°
+                      </text>
+                    </g>
+                  ))}
+                </g>
+
+                {/* Rotating Starfleet Radar Scanner Beam */}
+                <g
+                  className="animate-radar-sweep"
+                  style={{
+                    transformOrigin: '340px 340px',
+                    animationPlayState: effectivePaused ? 'paused' : 'running',
+                  }}
+                >
+                  <path
+                    d="M 340 340 L 340 20 A 320 320 0 0 1 515 72 Z"
+                    fill="url(#radarSweepGrad)"
+                    opacity="0.7"
+                  />
+                  <line x1="340" y1="340" x2="340" y2="20" stroke="#22D3EE" strokeOpacity="0.45" strokeWidth="1.2" />
+                </g>
+
+                {/* Twinkling Pulsar Stars */}
+                {[
+                  { x: 66, y: 82, s: 5, c: '#7DD3FC', d: '0s' },
+                  { x: 608, y: 112, s: 6, c: '#FDE68A', d: '-1.5s' },
+                  { x: 92, y: 586, s: 5.5, c: '#C4B5FD', d: '-2.6s' },
+                  { x: 590, y: 572, s: 5, c: '#6EE7B7', d: '-0.9s' },
+                ].map((p, idx) => (
+                  <g
+                    key={`pulsar-${idx}`}
+                    transform={`translate(${p.x}, ${p.y})`}
+                    className="animate-island-beacon"
+                    style={{ animationDelay: p.d }}
+                  >
+                    <line x1={-p.s} y1="0" x2={p.s} y2="0" stroke={p.c} strokeWidth="1.4" strokeLinecap="round" />
+                    <line x1="0" y1={-p.s} x2="0" y2={p.s} stroke={p.c} strokeWidth="1.4" strokeLinecap="round" />
+                    <circle cx="0" cy="0" r="1.6" fill="#FFFFFF" />
+                  </g>
+                ))}
 
                 {/* Subtle Asteroid Belt Dots */}
                 <g opacity="0.45">
@@ -545,9 +655,10 @@ export function PlanetHomeView({
                   <circle cx="520" cy="512" r="2.6" fill="#FEF9C3" />
                 </g>
 
-                {/* Concentric Orbit Rings */}
+                {/* Concentric Orbit Rings (Brighter Emerald/Cyan when Cleared) */}
                 {SECTORS.map((sec) => {
                   const meta = PLANET_META[sec.id];
+                  const starStats = getSectorStarStats(sec, profile.sectors[sec.id]);
                   const isHov = hoveredSector === sec.id;
                   return (
                     <circle
@@ -556,13 +667,45 @@ export function PlanetHomeView({
                       cy="340"
                       r={meta.orbitRadius}
                       fill="none"
-                      stroke={isHov ? meta.glowColor : '#38BDF8'}
-                      strokeOpacity={isHov ? 0.85 : 0.18}
-                      strokeWidth={isHov ? 2.2 : 1.1}
-                      strokeDasharray={isHov ? 'none' : '5 6'}
+                      stroke={isHov ? meta.glowColor : starStats.allDone ? '#34D399' : '#38BDF8'}
+                      strokeOpacity={isHov ? 0.9 : starStats.allDone ? 0.45 : 0.2}
+                      strokeWidth={isHov ? 2.4 : starStats.allDone ? 1.5 : 1.1}
+                      strokeDasharray={isHov || starStats.allDone ? 'none' : '5 6'}
                     />
                   );
                 })}
+
+                {/* Patrolling Explorer Starship & Scout Probe */}
+                <g
+                  className="animate-orbit-spin"
+                  style={{
+                    transformOrigin: '340px 340px',
+                    animationDuration: '34s',
+                    animationDelay: '-11s',
+                    animationPlayState: effectivePaused ? 'paused' : 'running',
+                  }}
+                >
+                  <g transform="translate(508, 340)">
+                    {/* Ion Exhaust Trail */}
+                    <path d="M 0 18 L 0 42" stroke="#22D3EE" strokeWidth="2.5" strokeLinecap="round" strokeOpacity="0.65" strokeDasharray="3 3" />
+                    <polygon points="0,-10 7,8 0,4 -7,8" fill="#F8FAFC" stroke="#22D3EE" strokeWidth="1.3" />
+                    <circle cx="0" cy="-1" r="2.2" fill="#38BDF8" />
+                  </g>
+                </g>
+                <g
+                  className="animate-orbit-spin"
+                  style={{
+                    transformOrigin: '340px 340px',
+                    animationDuration: '48s',
+                    animationDelay: '-26s',
+                    animationPlayState: effectivePaused ? 'paused' : 'running',
+                  }}
+                >
+                  <g transform="translate(612, 340)">
+                    <circle cx="0" cy="0" r="3.2" fill="#FBBF24" />
+                    <line x1="-7" y1="0" x2="7" y2="0" stroke="#94A3B8" strokeWidth="1.5" />
+                  </g>
+                </g>
 
                 {/* Central Sun Core */}
                 <g transform="translate(340, 340)">
@@ -607,9 +750,9 @@ export function PlanetHomeView({
                       <g
                         transform={`translate(${340 + meta.orbitRadius}, 340)`}
                         className="cursor-pointer"
-                        onMouseEnter={() => setHoveredSector(sec.id)}
-                        onMouseLeave={() => setHoveredSector((cur) => (cur === sec.id ? null : cur))}
-                        onClick={() => onSelectSector(sec.id)}
+                        onMouseEnter={() => handleHoverPlanet(sec.id)}
+                        onMouseLeave={() => handleHoverPlanet(null)}
+                        onClick={() => handleEnterSector(sec.id)}
                       >
                         <g
                           className="animate-counter-orbit-spin"
@@ -638,6 +781,23 @@ export function PlanetHomeView({
                               strokeWidth={isHov ? 2.2 : 1.4}
                               strokeOpacity={0.9}
                             />
+                          )}
+
+                          {/* Target-Lock Reticle Crosshairs when Hovered */}
+                          {isHov && (
+                            <g stroke="#22D3EE" strokeWidth="1.6" fill="none">
+                              <circle
+                                cx="0"
+                                cy="0"
+                                r={meta.planetRadius + 14}
+                                strokeDasharray="6 4"
+                                strokeOpacity="0.9"
+                              />
+                              <line x1={-meta.planetRadius - 19} y1="0" x2={-meta.planetRadius - 11} y2="0" />
+                              <line x1={meta.planetRadius + 11} y1="0" x2={meta.planetRadius + 19} y2="0" />
+                              <line x1="0" y1={-meta.planetRadius - 19} x2="0" y2={-meta.planetRadius - 11} />
+                              <line x1="0" y1={meta.planetRadius + 11} x2="0" y2={meta.planetRadius + 19} />
+                            </g>
                           )}
 
                           {/* Tilted Double Planetary Ring (Back Arc) */}
@@ -755,9 +915,32 @@ export function PlanetHomeView({
                 })}
               </svg>
 
-              <p className="mt-1 text-center text-xs text-slate-400">
-                懸停於任一行星或右側星球列表即可暫停公轉，點擊大行星立即展開冒險！
-              </p>
+              {/* Live Planet Target Telemetry HUD */}
+              {(() => {
+                const activeSec = hoveredSector
+                  ? SECTORS.find((s) => s.id === hoveredSector) ?? null
+                  : null;
+                if (!activeSec) {
+                  return (
+                    <p className="mt-2 text-center text-xs text-slate-400">
+                      探測雷達持續掃描中 · 懸停任一行星可啟動目標鎖定並暫停公轉，點擊即刻躍遷啟航！
+                    </p>
+                  );
+                }
+                const hs = getSectorStarStats(activeSec, profile.sectors[activeSec.id]);
+                return (
+                  <div className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-cyan-500/40 bg-[#071022] px-3.5 py-2 text-xs">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono font-bold text-cyan-300">{activeSec.code}</span>
+                      <span className="font-bold text-white">{activeSec.title}</span>
+                      <span className="text-slate-400">· 創意對戰：{activeSec.creativeName}</span>
+                    </div>
+                    <div className="font-mono font-bold text-amber-300 tabular-nums">
+                      已奪 {hs.earned}/{hs.total} 顆星 · 點擊降落探索 →
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           ) : (
             /* Bright Planet Mode: Large 70% Stage with Dynamic Cloud-Sea Halos, Orbiting Airships & Island Beacons */
@@ -977,11 +1160,11 @@ export function PlanetHomeView({
                         onClick={(e) => {
                           e.stopPropagation();
                           if (!dragRef.current.moved) {
-                            onSelectSector(sec.id);
+                            handleEnterSector(sec.id);
                           }
                         }}
-                        onMouseEnter={() => setHoveredSector(sec.id)}
-                        onMouseLeave={() => setHoveredSector(null)}
+                        onMouseEnter={() => handleHoverPlanet(sec.id)}
+                        onMouseLeave={() => handleHoverPlanet(null)}
                       >
                         {/* Pulsing Island Beacon Halo */}
                         <ellipse
@@ -1118,7 +1301,7 @@ export function PlanetHomeView({
                   onMouseLeave={() => setHoveredSector(null)}
                   onFocus={() => focusIslandOnMap(sec.id)}
                   onBlur={() => setHoveredSector(null)}
-                  onClick={() => onSelectSector(sec.id)}
+                  onClick={() => handleEnterSector(sec.id)}
                   className={`group flex w-full items-center justify-between gap-3 rounded-xl border px-3.5 py-2.5 text-left transition-all ${
                     isHov
                       ? 'border-sky-500 bg-white shadow-md dark:border-cyan-400 dark:bg-[#111C33] dark:shadow-none'

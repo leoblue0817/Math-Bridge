@@ -8,10 +8,13 @@ import {
   Gamepad2,
   Link2,
   Presentation,
+  Rocket,
   Star,
 } from 'lucide-react';
 import { SECTORS, SectorData, getSectorStarStats } from '../data/sectors';
 import { AppMode, ProfileRecord, SectorId, TerminalTab } from '../types';
+import { soundEngine } from '../utils/soundEngine';
+import { AudioToggleButtons } from './AudioToggleButtons';
 import { PLANET_META } from './PlanetHomeView';
 import { ThemeContext } from './ThemeContext';
 import { SlideDeckView } from './SlideDeckView';
@@ -42,6 +45,7 @@ interface SectorTerminalProps {
   onAnswerSubQuiz: (
     id: SectorId,
     subId: string,
+    qId: string,
     qIdx: number,
     optIdx: number,
     isCorrect: boolean
@@ -130,9 +134,15 @@ function PlanetViewportWindow({ sectorId }: { sectorId: SectorId }) {
           </g>
         </g>
 
-        {/* Orbiting Mini Moon */}
+        {/* Orbiting Mini Moon & Patrolling Exploration Craft */}
         <g className="animate-orbit-spin" style={{ transformOrigin: '56px 48px', animationDuration: '9s' }}>
           <circle cx="90" cy="48" r="3.6" fill="#F8FAFC" stroke={meta.glowColor} strokeWidth="1" />
+        </g>
+        <g
+          className="animate-orbit-spin"
+          style={{ transformOrigin: '56px 48px', animationDuration: '14s', animationDelay: '-5s' }}
+        >
+          <polygon points="56,12 60,19 56,17 52,19" fill="#38BDF8" stroke="#FFFFFF" strokeWidth="0.8" />
         </g>
       </svg>
     </div>
@@ -267,8 +277,8 @@ export function SectorTerminal({
             </div>
           </div>
 
-          {/* Right: Star Progress Bar + Mode Toggle */}
-          <div className="flex shrink-0 flex-col gap-3 lg:items-end">
+          {/* Right: Star Progress Bar + Mode & Audio Controls */}
+          <div className="flex shrink-0 flex-col gap-2.5 lg:items-end">
             <div className="w-full min-w-[230px] rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 dark:border-slate-800 dark:bg-[#080D1A]">
               <div className="flex items-center justify-between text-xs font-bold">
                 <span className="inline-flex items-center gap-1.5 text-amber-700 dark:text-amber-300">
@@ -290,60 +300,79 @@ export function SectorTerminal({
               </div>
             </div>
 
-            <div className="inline-flex self-start rounded-xl border border-slate-200 bg-slate-100 p-1 lg:self-end dark:border-slate-700 dark:bg-[#080D1A]">
-              <button
-                type="button"
-                onClick={() => onChangeMode('student')}
-                className={`whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-semibold ${
-                  mode === 'student'
-                    ? 'bg-sky-600 text-white dark:bg-cyan-500 dark:text-slate-950'
-                    : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'
-                }`}
-              >
-                學生練習
-              </button>
-              <button
-                type="button"
-                onClick={() => onChangeMode('projector')}
-                className={`whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-semibold ${
-                  mode === 'projector'
-                    ? 'bg-amber-500 text-white dark:bg-amber-400 dark:text-slate-950'
-                    : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'
-                }`}
-              >
-                教室投影
-              </button>
+            <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+              <AudioToggleButtons compact />
+
+              <div className="inline-flex rounded-xl border border-slate-200 bg-slate-100 p-1 dark:border-slate-700 dark:bg-[#080D1A]">
+                <button
+                  type="button"
+                  onClick={() => {
+                    soundEngine.playClick();
+                    onChangeMode('student');
+                  }}
+                  className={`whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-semibold ${
+                    mode === 'student'
+                      ? 'bg-sky-600 text-white dark:bg-cyan-500 dark:text-slate-950'
+                      : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'
+                  }`}
+                >
+                  學生練習
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    soundEngine.playClick();
+                    onChangeMode('projector');
+                  }}
+                  className={`whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-semibold ${
+                    mode === 'projector'
+                      ? 'bg-amber-500 text-white dark:bg-amber-400 dark:text-slate-950'
+                      : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'
+                  }`}
+                >
+                  教室投影
+                </button>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Glowing Energy Quest Route Stepper */}
+      {/* Glowing Energy Quest Route Stepper + Moving Spaceship Avatar */}
       <div
         role="tablist"
         aria-label="星球闖關航線"
         className="relative rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm dark:border-slate-800 dark:bg-[#0D1424]/95 dark:shadow-none"
       >
         {/* Horizontal Connecting Energy Beam (Desktop) */}
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute top-[44px] right-16 left-16 hidden h-1 rounded-full bg-slate-200 sm:block dark:bg-slate-800"
-        >
-          <div
-            className="h-full rounded-full bg-gradient-to-r from-emerald-400 via-cyan-400 to-amber-400 transition-all duration-500"
-            style={{
-              width: `${
-                activeTab === 'slides'
-                  ? 12
-                  : activeTab === 'warmup'
-                  ? 42
-                  : activeTab === 'micro'
-                  ? 72
-                  : 100
-              }%`,
-            }}
-          />
-        </div>
+        {(() => {
+          const beamPct =
+            activeTab === 'slides'
+              ? 12
+              : activeTab === 'warmup'
+              ? 42
+              : activeTab === 'micro'
+              ? 72
+              : 96;
+          return (
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute top-[44px] right-16 left-16 hidden h-1.5 rounded-full bg-slate-200 sm:block dark:bg-slate-800"
+            >
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-emerald-400 via-cyan-400 to-amber-400 transition-all duration-500"
+                style={{ width: `${beamPct}%` }}
+              />
+              {/* Animated Starship Avatar gliding along Mission Track */}
+              <div
+                className="absolute -top-2.5 flex h-6 w-6 -translate-x-1/2 items-center justify-center rounded-full border border-cyan-300 bg-slate-950 text-cyan-300 shadow-md transition-all duration-500"
+                style={{ left: `${beamPct}%` }}
+              >
+                <Rocket className="h-3.5 w-3.5 rotate-45" />
+              </div>
+            </div>
+          );
+        })()}
 
         <div className="relative z-10 grid grid-cols-2 gap-3 sm:grid-cols-4">
           {questNodes.map((node) => {
@@ -355,7 +384,10 @@ export function SectorTerminal({
                 role="tab"
                 aria-selected={isActive}
                 type="button"
-                onClick={() => onChangeTab(node.id)}
+                onClick={() => {
+                  soundEngine.playClick();
+                  onChangeTab(node.id);
+                }}
                 className={`group flex flex-col items-center gap-2 rounded-xl border p-3 text-center transition-all ${
                   isActive
                     ? 'border-sky-500 bg-sky-50/90 shadow-md dark:border-cyan-400 dark:bg-[#111D35] dark:shadow-none'
@@ -431,9 +463,12 @@ export function SectorTerminal({
             progress={secProgress}
             mode={mode}
             activeSubId={activeSubId}
-            onSelectSubId={onSelectSubId}
-            onAnswerSubQuiz={(subId, qIdx, optIdx, isCorrect) =>
-              onAnswerSubQuiz(sector.id, subId, qIdx, optIdx, isCorrect)
+            onSelectSubId={(subId) => {
+              soundEngine.playClick();
+              onSelectSubId(subId);
+            }}
+            onAnswerSubQuiz={(subId, qId, qIdx, optIdx, isCorrect) =>
+              onAnswerSubQuiz(sector.id, subId, qId, qIdx, optIdx, isCorrect)
             }
             onResetSubQuiz={(subId) => onResetSubQuiz(sector.id, subId)}
             onGoNextTab={() => onChangeTab('lab')}
@@ -449,7 +484,10 @@ export function SectorTerminal({
         {prevSector ? (
           <button
             type="button"
-            onClick={() => onSelectSector(prevSector.id)}
+            onClick={() => {
+              soundEngine.playWarp();
+              onSelectSector(prevSector.id);
+            }}
             className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-slate-700 hover:border-sky-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-cyan-400"
           >
             <ChevronLeft className="h-4 w-4" aria-hidden="true" />
@@ -462,7 +500,10 @@ export function SectorTerminal({
         {nextSector && (
           <button
             type="button"
-            onClick={() => onSelectSector(nextSector.id)}
+            onClick={() => {
+              soundEngine.playWarp();
+              onSelectSector(nextSector.id);
+            }}
             className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-slate-700 hover:border-sky-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-cyan-400"
           >
             <span>下一星球：{nextSector.shortTitle}</span>

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, Eye, Maximize2, Minimize2 } from 'lucide-react';
 import { SectorData } from '../data/sectors';
+import { soundEngine } from '../utils/soundEngine';
 
 interface SlideDeckViewProps {
   sector: SectorData;
@@ -24,11 +25,17 @@ export function SlideDeckView({
   const current = slides[slideIdx];
 
   const prevSlide = useCallback(() => {
-    setSlideIdx((i) => Math.max(0, i - 1));
+    setSlideIdx((i) => {
+      if (i > 0) soundEngine.playSlideFlip();
+      return Math.max(0, i - 1);
+    });
   }, []);
 
   const nextSlide = useCallback(() => {
-    setSlideIdx((i) => Math.min(slides.length - 1, i + 1));
+    setSlideIdx((i) => {
+      if (i < slides.length - 1) soundEngine.playSlideFlip();
+      return Math.min(slides.length - 1, i + 1);
+    });
   }, [slides.length]);
 
   useEffect(() => {
@@ -62,6 +69,7 @@ export function SlideDeckView({
   };
 
   const toggleBlank = (key: string) => {
+    soundEngine.playClick();
     setRevealedBlanks((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
@@ -187,7 +195,10 @@ export function SlideDeckView({
         <div className="flex flex-wrap items-center gap-3">
           <button
             type="button"
-            onClick={onComplete}
+            onClick={() => {
+              soundEngine.playClick();
+              onComplete();
+            }}
             className={`whitespace-nowrap rounded-xl px-4 py-2 text-sm font-semibold transition-colors ${
               isCompleted
                 ? 'border border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-500/40 dark:bg-emerald-500/15 dark:text-emerald-200'
@@ -199,7 +210,10 @@ export function SlideDeckView({
 
           <button
             type="button"
-            onClick={onGoNextTab}
+            onClick={() => {
+              soundEngine.playClick();
+              onGoNextTab();
+            }}
             className="whitespace-nowrap rounded-xl bg-sky-600 px-5 py-2 text-sm font-bold text-white hover:bg-sky-700 dark:bg-cyan-500 dark:text-slate-950 dark:hover:bg-cyan-400"
           >
             前往熱身配對／佈置 →

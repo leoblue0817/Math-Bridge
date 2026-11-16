@@ -1,0 +1,142 @@
+{
+  "entities": {
+    "BattleRoom": {
+      "title": "BattleRoom",
+      "description": "Real-time 2-player math quiz battle room synchronized via Firestore.",
+      "type": "object",
+      "properties": {
+        "roomCode": {
+          "type": "string",
+          "minLength": 6,
+          "maxLength": 6,
+          "pattern": "^[A-Z2-9]{6}$",
+          "description": "6-character uppercase alphanumeric room code matching document ID."
+        },
+        "hostUid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "description": "Firebase Auth UID of room creator."
+        },
+        "hostName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 32,
+          "description": "Display name of host explorer."
+        },
+        "guestUid": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "Firebase Auth UID of joined challenger, empty string while waiting."
+        },
+        "guestName": {
+          "type": "string",
+          "maxLength": 32,
+          "description": "Display name of challenger, empty string while waiting."
+        },
+        "sectorScope": {
+          "type": "string",
+          "pattern": "^(all|s[1-8])$",
+          "maxLength": 8,
+          "description": "Topic scope: all 8 sectors or single sector s1..s8."
+        },
+        "questionIds": {
+          "type": "array",
+          "description": "Bounded ordered list of stable quiz question IDs (3 to 10 items)."
+        },
+        "questionSeconds": {
+          "type": "integer",
+          "description": "Countdown seconds per question (10 to 60)."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["waiting", "playing", "finished"],
+          "maxLength": 16,
+          "description": "Current room lifecycle state."
+        },
+        "currentIndex": {
+          "type": "integer",
+          "description": "Active question index (0 to 10)."
+        },
+        "hostScore": {
+          "type": "integer",
+          "description": "Host accumulated battle score."
+        },
+        "guestScore": {
+          "type": "integer",
+          "description": "Guest accumulated battle score."
+        },
+        "hostAnsweredCount": {
+          "type": "integer",
+          "description": "Number of rounds answered by host."
+        },
+        "guestAnsweredCount": {
+          "type": "integer",
+          "description": "Number of rounds answered by guest."
+        },
+        "hostCorrectCount": {
+          "type": "integer",
+          "description": "Number of correct answers by host."
+        },
+        "guestCorrectCount": {
+          "type": "integer",
+          "description": "Number of correct answers by guest."
+        },
+        "hostLastCorrect": {
+          "type": "boolean",
+          "description": "Whether host answered the latest question correctly."
+        },
+        "guestLastCorrect": {
+          "type": "boolean",
+          "description": "Whether guest answered the latest question correctly."
+        },
+        "winnerUid": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "Winner UID, 'draw', or empty string before completion."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server last update timestamp."
+        }
+      },
+      "required": [
+        "roomCode",
+        "hostUid",
+        "hostName",
+        "guestUid",
+        "guestName",
+        "sectorScope",
+        "questionIds",
+        "questionSeconds",
+        "status",
+        "currentIndex",
+        "hostScore",
+        "guestScore",
+        "hostAnsweredCount",
+        "guestAnsweredCount",
+        "hostCorrectCount",
+        "guestCorrectCount",
+        "hostLastCorrect",
+        "guestLastCorrect",
+        "winnerUid",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/battleRooms/{roomId}": {
+      "schema": {
+        "$ref": "#/entities/BattleRoom"
+      },
+      "description": "Multiplayer math battle rooms keyed by 6-char roomCode."
+    }
+  }
+}

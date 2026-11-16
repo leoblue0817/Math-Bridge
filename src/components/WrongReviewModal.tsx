@@ -1,13 +1,14 @@
 import { useMemo, useState } from 'react';
 import { CheckCircle2, X, XCircle } from 'lucide-react';
-import { SECTORS } from '../data/sectors';
+import { SECTORS, getSectorQuestionById } from '../data/sectors';
 import { ProfileRecord, SectorId } from '../types';
+import { soundEngine } from '../utils/soundEngine';
 import { MathDiagram } from './MathDiagrams';
 
 interface WrongReviewModalProps {
   profile: ProfileRecord;
   onClose: () => void;
-  onResolveWrong: (sectorId: SectorId, qIdx: number) => void;
+  onResolveWrong: (sectorId: SectorId, qId: string, qIdx: number) => void;
 }
 
 export function WrongReviewModal({
@@ -19,6 +20,7 @@ export function WrongReviewModal({
     const list: {
       sectorId: SectorId;
       sectorTitle: string;
+      qId: string;
       qIdx: number;
       q: string;
       diagramId?: string;
@@ -29,13 +31,33 @@ export function WrongReviewModal({
 
     SECTORS.forEach((sec) => {
       const sp = profile.sectors[sec.id];
-      const wList = sp.wrongQuestions ?? [];
-      wList.forEach((qIdx) => {
-        const quiz = sec.quizzes[qIdx];
-        if (quiz) {
+      const seenIds = new Set<string>();
+
+      const wIds = sp.wrongQuestionIds ?? [];
+      wIds.forEach((qId) => {
+        const quiz = getSectorQuestionById(sec, qId);
+        if (quiz && !seenIds.has(quiz.id)) {
+          seenIds.add(quiz.id);
+          const qIdx = sec.quizzes.findIndex((item) => item.id === quiz.id);
           list.push({
             sectorId: sec.id,
             sectorTitle: sec.shortTitle,
+            qId: quiz.id,
+            qIdx,
+            ...quiz,
+          });
+        }
+      });
+
+      const wList = sp.wrongQuestions ?? [];
+      wList.forEach((qIdx) => {
+        const quiz = sec.quizzes[qIdx];
+        if (quiz && !seenIds.has(quiz.id)) {
+          seenIds.add(quiz.id);
+          list.push({
+            sectorId: sec.id,
+            sectorTitle: sec.shortTitle,
+            qId: quiz.id,
             qIdx,
             ...quiz,
           });
@@ -67,7 +89,10 @@ export function WrongReviewModal({
           </div>
           <button
             type="button"
-            onClick={onClose}
+            onClick={() => {
+              soundEngine.playClick();
+              onClose();
+            }}
             aria-label="關閉錯題複習"
             className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
           >
@@ -81,12 +106,12 @@ export function WrongReviewModal({
               <CheckCircle2 className="mx-auto h-10 w-10 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
               <div className="mt-3 text-base font-bold">目前沒有待複習錯題！</div>
               <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">
-                到各主題島嶼完成「題目演練」時，如果有答錯的題目會自動收錄到這裡喔。
+                到各主題星球完成「小節微關卡」時，如果有答錯的題目會自動收錄到這裡喔。
               </p>
             </div>
           ) : (
             wrongItems.map((item) => {
-              const key = `${item.sectorId}-${item.qIdx}`;
+              const key = `${item.sectorId}-${item.qId}`;
               const picked = pickedMap[key];
               const answered = picked !== undefined;
               const isCorrect = picked === item.ans;
@@ -97,7 +122,7 @@ export function WrongReviewModal({
                   className="space-y-3 rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-[#080D1A]"
                 >
                   <div className="text-xs font-semibold text-sky-700 dark:text-cyan-400">
-                    {item.sectorTitle} · 第 {item.qIdx + 1} 題
+                    {item.sectorTitle} · 題號 {item.qId.toUpperCase()}
                   </div>
                   <div className="text-sm font-semibold leading-relaxed md:text-base">{item.q}</div>
 
@@ -128,11 +153,15 @@ export function WrongReviewModal({
                           key={optIdx}
                           type="button"
                           onClick={() => {
+                            soundEngine.unlockIfNeeded();
                             setPickedMap((prev) => ({ ...prev, [key]: optIdx }));
                             if (rightOpt) {
+                              soundEngine.playCorrect(1);
                               setTimeout(() => {
-                                onResolveWrong(item.sectorId, item.qIdx);
+                                onResolveWrong(item.sectorId, item.qId, item.qIdx);
                               }, 900);
+                            } else {
+                              soundEngine.playWrong();
                             }
                           }}
                           className={`flex items-center justify-between rounded-xl border px-3.5 py-2.5 text-left text-xs font-medium ${cls}`}

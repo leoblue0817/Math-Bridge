@@ -4,7 +4,7 @@ export type AppMode = 'student' | 'projector';
 
 export type ThemeMode = 'light' | 'dark';
 
-export type HomeViewMode = 'planet' | 'grid';
+export type HomeViewMode = 'planet' | 'grid' | 'battle';
 
 export type TerminalTab = 'slides' | 'warmup' | 'micro' | 'lab';
 
@@ -12,6 +12,7 @@ export interface SubLevelProgress {
   completed: boolean;
   bestScore: number;
   answers: Record<number, number>;
+  answersById?: Record<string, number>;
 }
 
 export interface SectorProgress {
@@ -23,8 +24,10 @@ export interface SectorProgress {
   quizIdx: number;
   quizScore: number;
   answers: Record<number, number>;
+  answersById?: Record<string, number>;
   subLevels: Record<string, SubLevelProgress>;
   wrongQuestions: number[];
+  wrongQuestionIds?: string[];
 }
 
 export interface AppProgressState {
@@ -37,6 +40,8 @@ export interface ProfileRecord {
   name: string;
   sectors: Record<SectorId, SectorProgress>;
   totalScore: number;
+  achievementBadges: string[];
+  claimedBattleRooms?: string[];
   updatedAt: number;
 }
 
@@ -54,6 +59,7 @@ export function createEmptySubLevelProgress(): SubLevelProgress {
     completed: false,
     bestScore: 0,
     answers: {},
+    answersById: {},
   };
 }
 
@@ -67,8 +73,10 @@ export function createEmptySectorProgress(): SectorProgress {
     quizIdx: 0,
     quizScore: 0,
     answers: {},
+    answersById: {},
     subLevels: {},
     wrongQuestions: [],
+    wrongQuestionIds: [],
   };
 }
 
@@ -90,6 +98,8 @@ export function createInitialProfile(name: string): ProfileRecord {
     name,
     sectors: createEmptySectorsRecord(),
     totalScore: 0,
+    achievementBadges: [],
+    claimedBattleRooms: [],
     updatedAt: Date.now(),
   };
 }
@@ -117,3 +127,4 @@ export function createInitialProgress(): AppProgressState {
 export const LEGACY_STORAGE_KEY = 'math_voyager_8sectors_v2';
 export const STORAGE_KEY_V3 = 'math_voyager_8sectors_v3';
 export const STORAGE_KEY_V4 = 'math_voyager_8sectors_v4';
+export const STORAGE_KEY_V5 = 'math_voyager_8sectors_v5';

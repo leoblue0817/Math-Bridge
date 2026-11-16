@@ -5,12 +5,14 @@ import {
   ChevronRight,
   ChevronUp,
   Eye,
+  Flame,
   FlaskConical,
   RotateCcw,
   Star,
 } from 'lucide-react';
-import { SectorData } from '../data/sectors';
+import { SectorData, getSubLessonQuestions } from '../data/sectors';
 import { AppMode, SectorProgress, createEmptySubLevelProgress } from '../types';
+import { soundEngine } from '../utils/soundEngine';
 import { MathDiagram } from './MathDiagrams';
 import { SectorMiniExplorer } from './TeachInteractiveView';
 
@@ -20,7 +22,13 @@ interface MicroLevelStageViewProps {
   mode: AppMode;
   activeSubId: string;
   onSelectSubId: (subId: string) => void;
-  onAnswerSubQuiz: (subId: string, qIdx: number, optIdx: number, isCorrect: boolean) => void;
+  onAnswerSubQuiz: (
+    subId: string,
+    qId: string,
+    qIdx: number,
+    optIdx: number,
+    isCorrect: boolean
+  ) => void;
   onResetSubQuiz: (subId: string) => void;
   onGoNextTab: () => void;
   onQuizOutcome?: (outcome: 'correct' | 'wrong') => void;
@@ -43,34 +51,49 @@ export function MicroLevelStageView({
   );
   const activeSub = sector.subLessons[activeSubIndex] ?? sector.subLessons[0];
   const subProgress = progress.subLevels?.[activeSub.id] ?? createEmptySubLevelProgress();
+  const questions = getSubLessonQuestions(sector, activeSub);
 
   const [qPos, setQPos] = useState(0);
   const [projectorReveal, setProjectorReveal] = useState(false);
   const [showExplorer, setShowExplorer] = useState(false);
+  const [comboStreak, setComboStreak] = useState(0);
+  const [shakeCard, setShakeCard] = useState(false);
+
+  const getChosenForQuestion = (qId: string, qIdx: number, sp = subProgress) => {
+    if (sp.answersById && sp.answersById[qId] !== undefined) {
+      return sp.answersById[qId];
+    }
+    return sp.answers[qIdx];
+  };
 
   // Sync question step when switching sub-lessons
   useEffect(() => {
-    const firstUnanswered = activeSub.questionIndices.findIndex(
-      (qIdx) => subProgress.answers[qIdx] === undefined
-    );
+    const subQuestions = getSubLessonQuestions(sector, activeSub);
+    const firstUnanswered = subQuestions.findIndex((item) => {
+      const idx = sector.quizzes.findIndex((qq) => qq.id === item.id);
+      return getChosenForQuestion(item.id, idx) === undefined;
+    });
     if (firstUnanswered >= 0) {
       setQPos(firstUnanswered);
     } else {
-      setQPos(activeSub.questionIndices.length);
+      setQPos(subQuestions.length);
     }
     setProjectorReveal(false);
+    setComboStreak(0);
+    setShakeCard(false);
   }, [activeSub.id]);
 
-  const totalQ = activeSub.questionIndices.length;
+  const totalQ = questions.length;
   const isSummaryView = qPos >= totalQ;
-  const currentQIdx = activeSub.questionIndices[qPos] ?? activeSub.questionIndices[0];
-  const q = sector.quizzes[currentQIdx];
-  const chosen = subProgress.answers[currentQIdx];
+  const q = questions[qPos] ?? questions[0];
+  const currentQIdx = q ? sector.quizzes.findIndex((item) => item.id === q.id) : 0;
+  const chosen = q ? getChosenForQuestion(q.id, currentQIdx) : undefined;
   const hasAnswered = chosen !== undefined;
 
-  const correctCount = activeSub.questionIndices.filter(
-    (qIdx) => subProgress.answers[qIdx] === sector.quizzes[qIdx]?.ans
-  ).length;
+  const correctCount = questions.filter((item) => {
+    const idx = sector.quizzes.findIndex((qq) => qq.id === item.id);
+    return getChosenForQuestion(item.id, idx) === item.ans;
+  }).length;
   const passThreshold = Math.ceil(totalQ * 0.6);
   const passed = correctCount >= passThreshold;
 
@@ -80,16 +103,29 @@ export function MicroLevelStageView({
       : null;
 
   const handleSelectOption = (optIdx: number) => {
-    if (hasAnswered) return;
+    if (hasAnswered || !q) return;
+    soundEngine.unlockIfNeeded();
     const isCorrect = optIdx === q.ans;
-    onAnswerSubQuiz(activeSub.id, currentQIdx, optIdx, isCorrect);
+    if (isCorrect) {
+      const nextStreak = comboStreak + 1;
+      setComboStreak(nextStreak);
+      soundEngine.playCorrect(nextStreak);
+    } else {
+      setComboStreak(0);
+      setShakeCard(true);
+      soundEngine.playWrong();
+      setTimeout(() => setShakeCard(false), 450);
+    }
+    onAnswerSubQuiz(activeSub.id, q.id, currentQIdx, optIdx, isCorrect);
     onQuizOutcome?.(isCorrect ? 'correct' : 'wrong');
   };
 
   const handleResetCurrent = () => {
+    soundEngine.playClick();
     onResetSubQuiz(activeSub.id);
     setQPos(0);
     setProjectorReveal(false);
+    setComboStreak(0);
   };
 
   return (
@@ -98,11 +134,14 @@ export function MicroLevelStageView({
       <div className="rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm sm:p-5 dark:border-slate-800 dark:bg-[#0D1424] dark:shadow-none">
         <div className="flex flex-wrap items-center justify-between gap-2 pb-3">
           <div className="text-xs font-semibold text-sky-700 dark:text-cyan-400">
-            小節微關卡探索路徑 · 點選各站逐一解鎖星星
+            小節微關卡探索路徑 · 點選各站逐一挑戰 5 題奪星（答對 {passThreshold}/{totalQ} 題即通關）
           </div>
           <button
             type="button"
-            onClick={() => setShowExplorer((v) => !v)}
+            onClick={() => {
+              soundEngine.playClick();
+              setShowExplorer((v) => !v);
+            }}
             className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:border-sky-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-cyan-400"
           >
             <FlaskConical className="h-3.5 w-3.5 text-amber-500 dark:text-amber-300" aria-hidden="true" />
@@ -123,9 +162,11 @@ export function MicroLevelStageView({
           <div className="relative z-10 grid grid-cols-1 gap-3 sm:grid-cols-3">
             {sector.subLessons.map((sub, idx) => {
               const sp = progress.subLevels?.[sub.id] ?? createEmptySubLevelProgress();
-              const answeredInSub = sub.questionIndices.filter(
-                (qi) => sp.answers[qi] !== undefined
-              ).length;
+              const subQs = getSubLessonQuestions(sector, sub);
+              const answeredInSub = subQs.filter((item) => {
+                const qi = sector.quizzes.findIndex((qq) => qq.id === item.id);
+                return getChosenForQuestion(item.id, qi, sp) !== undefined;
+              }).length;
               const isSelected = sub.id === activeSub.id;
 
               return (
@@ -146,7 +187,7 @@ export function MicroLevelStageView({
                       <span>關卡 {sub.code}</span>
                       <span className="text-slate-400">·</span>
                       <span className="text-slate-500 tabular-nums dark:text-slate-400">
-                        {answeredInSub}/{sub.questionIndices.length} 題
+                        {answeredInSub}/{subQs.length} 題
                       </span>
                     </div>
                     <div className="mt-0.5 truncate text-sm font-bold text-slate-900 dark:text-white">
@@ -204,7 +245,7 @@ export function MicroLevelStageView({
         )}
       </div>
 
-      {/* Active Micro-Level: Focused Key Summary + Dedicated Micro-Quiz */}
+      {/* Active Micro-Level: Focused Key Summary + Dedicated Interactive 5-Question Quiz Arena */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
         {/* Left: Micro-Lesson Key Summary */}
         <aside className="rounded-2xl border border-slate-200 bg-white/95 p-6 shadow-sm lg:col-span-5 dark:border-slate-800 dark:bg-[#0D1424] dark:shadow-none">
@@ -233,13 +274,36 @@ export function MicroLevelStageView({
           </ul>
         </aside>
 
-        {/* Right: Micro-Quiz Arena */}
-        <section className="rounded-2xl border border-slate-200 bg-white/95 p-6 shadow-sm lg:col-span-7 dark:border-slate-800 dark:bg-[#0D1424] dark:shadow-none">
+        {/* Right: Micro-Quiz Arena with Combo Streak & Checkpoint Nodes */}
+        <section
+          className={`rounded-2xl border border-slate-200 bg-white/95 p-6 shadow-sm lg:col-span-7 dark:border-slate-800 dark:bg-[#0D1424] dark:shadow-none ${
+            shakeCard ? 'animate-wrong-shake border-rose-400 dark:border-rose-500' : ''
+          }`}
+        >
           {isSummaryView ? (
             <div className="flex h-full flex-col justify-between space-y-5 text-center sm:p-4">
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <div className="text-xs font-semibold text-sky-700 dark:text-cyan-400">
                   小節 {activeSub.code} · {activeSub.title} 結算
+                </div>
+                <div className="mx-auto flex max-w-xs items-center justify-center gap-2">
+                  {questions.map((item, i) => {
+                    const qi = sector.quizzes.findIndex((qq) => qq.id === item.id);
+                    const ansPicked = getChosenForQuestion(item.id, qi);
+                    const ok = ansPicked === item.ans;
+                    return (
+                      <span
+                        key={item.id}
+                        className={`flex h-9 w-9 items-center justify-center rounded-full border font-mono text-xs font-bold ${
+                          ok
+                            ? 'border-emerald-400 bg-emerald-500 text-white'
+                            : 'border-rose-400 bg-rose-500/15 text-rose-600 dark:text-rose-300'
+                        }`}
+                      >
+                        {ok ? '✓' : i + 1}
+                      </span>
+                    );
+                  })}
                 </div>
                 <h3 className="text-2xl font-bold text-slate-900 dark:text-white">
                   答對 {correctCount} / {totalQ} 題
@@ -273,7 +337,10 @@ export function MicroLevelStageView({
                 ) : (
                   <button
                     type="button"
-                    onClick={onGoNextTab}
+                    onClick={() => {
+                      soundEngine.playClick();
+                      onGoNextTab();
+                    }}
                     className="rounded-xl bg-amber-500 px-5 py-2.5 text-sm font-bold text-white hover:bg-amber-600 dark:bg-amber-400 dark:text-slate-950 dark:hover:bg-amber-300"
                   >
                     前往創意對戰 →
@@ -283,23 +350,40 @@ export function MicroLevelStageView({
             </div>
           ) : (
             <div className="space-y-5">
-              {/* Top Question Bar */}
+              {/* Top Question Bar + Live Combo Streak Meter */}
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-3 dark:border-slate-800">
-                <div className="text-xs text-slate-600 dark:text-slate-400">
+                <div className="flex flex-wrap items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
                   <span className="font-mono font-bold text-sky-700 tabular-nums dark:text-cyan-400">
-                    小節題目 {qPos + 1} / {totalQ}
+                    關卡題目 {qPos + 1} / {totalQ}
                   </span>
-                  <span className="mx-2">·</span>
+                  <span aria-hidden="true">·</span>
                   <span>
-                    本節答對 <strong className="font-mono text-amber-600 tabular-nums dark:text-amber-300">{correctCount}</strong> 題
+                    已答對{' '}
+                    <strong className="font-mono text-amber-600 tabular-nums dark:text-amber-300">
+                      {correctCount}
+                    </strong>{' '}
+                    / {passThreshold} 奪星
                   </span>
+
+                  {comboStreak >= 1 && (
+                    <span
+                      key={comboStreak}
+                      className="animate-combo-pop inline-flex items-center gap-1 rounded-md border border-amber-400/50 bg-amber-100 px-2 py-0.5 font-mono text-[11px] font-extrabold text-amber-800 dark:bg-amber-400/20 dark:text-amber-200"
+                    >
+                      <Flame className="h-3 w-3 text-orange-500" aria-hidden="true" />
+                      <span>連擊 x{comboStreak}</span>
+                    </span>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-2">
                   {mode === 'projector' && !hasAnswered && (
                     <button
                       type="button"
-                      onClick={() => setProjectorReveal((v) => !v)}
+                      onClick={() => {
+                        soundEngine.playClick();
+                        setProjectorReveal((v) => !v);
+                      }}
                       className="inline-flex items-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800 dark:border-amber-400/50 dark:bg-amber-400/15 dark:text-amber-200"
                     >
                       <Eye className="h-3.5 w-3.5" aria-hidden="true" />
@@ -307,25 +391,38 @@ export function MicroLevelStageView({
                     </button>
                   )}
 
-                  {activeSub.questionIndices.length > 1 && (
-                    <div className="flex items-center gap-1">
-                      {activeSub.questionIndices.map((_, i) => (
-                        <button
-                          key={i}
-                          type="button"
-                          onClick={() => {
-                            setQPos(i);
-                            setProjectorReveal(false);
-                          }}
-                          className={`h-6 w-6 rounded-md font-mono text-xs font-bold tabular-nums ${
-                            i === qPos
-                              ? 'bg-sky-600 text-white dark:bg-cyan-500 dark:text-slate-950'
-                              : 'border border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400'
-                          }`}
-                        >
-                          {i + 1}
-                        </button>
-                      ))}
+                  {/* Interactive 5-Checkpoint Mission Dots */}
+                  {totalQ > 1 && (
+                    <div className="flex items-center gap-1.5">
+                      {questions.map((item, i) => {
+                        const qi = sector.quizzes.findIndex((qq) => qq.id === item.id);
+                        const picked = getChosenForQuestion(item.id, qi);
+                        const answeredItem = picked !== undefined;
+                        const rightItem = answeredItem && picked === item.ans;
+                        return (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() => {
+                              soundEngine.playClick();
+                              setQPos(i);
+                              setProjectorReveal(false);
+                            }}
+                            title={`切換至第 ${i + 1} 題`}
+                            className={`h-7 w-7 rounded-lg font-mono text-xs font-bold tabular-nums transition-transform ${
+                              i === qPos
+                                ? 'scale-105 bg-sky-600 text-white ring-2 ring-sky-400/40 dark:bg-cyan-500 dark:text-slate-950'
+                                : answeredItem
+                                ? rightItem
+                                  ? 'border border-emerald-400 bg-emerald-50 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300'
+                                  : 'border border-rose-400 bg-rose-50 text-rose-700 dark:bg-rose-500/20 dark:text-rose-300'
+                                : 'border border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400'
+                            }`}
+                          >
+                            {answeredItem ? (rightItem ? '✓' : '✕') : i + 1}
+                          </button>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -395,7 +492,7 @@ export function MicroLevelStageView({
                   <div className="text-xs font-semibold text-amber-700 dark:text-amber-300">
                     {hasAnswered
                       ? chosen === q.ans
-                        ? '回答正確（+15分）'
+                        ? `回答正確（+15分${comboStreak >= 2 ? ` · ${comboStreak} 連擊！` : ''}）`
                         : '答題未中（已為你存入錯題複習艙，看看詳解吧！）'
                       : '教師投影詳解'}
                   </div>
@@ -406,6 +503,7 @@ export function MicroLevelStageView({
                       <button
                         type="button"
                         onClick={() => {
+                          soundEngine.playClick();
                           setQPos((p) => p + 1);
                           setProjectorReveal(false);
                         }}

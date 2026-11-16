@@ -1,5 +1,15 @@
-import { useEffect, useMemo, useState } from 'react';
-import { SECTORS, getSectorStarStats, getTotalSystemStars } from './data/sectors';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  SECTORS,
+  getSectorStarStats,
+  getSubLessonQuestions,
+  getTotalSystemStars,
+} from './data/sectors';
+import {
+  SPACE_ACHIEVEMENT_BADGES,
+  SpaceAchievementBadge,
+  reconcileAchievementBadges,
+} from './data/achievements';
 import {
   AppMode,
   HomeViewMode,
@@ -9,7 +19,9 @@ import {
   SECTOR_KEYS_SAFE,
   STORAGE_KEY_V3,
   STORAGE_KEY_V4,
+  STORAGE_KEY_V5,
   SectorId,
+  SubLevelProgress,
   TerminalTab,
   ThemeMode,
   createEmptySectorProgress,
@@ -18,16 +30,21 @@ import {
   createInitialProfile,
   createInitialStore,
 } from './types';
+import { soundEngine } from './utils/soundEngine';
 import { ThemeContext } from './components/ThemeContext';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { StarfieldCanvas } from './components/StarfieldCanvas';
 import { TopBar } from './components/TopBar';
 import { PlanetHomeView } from './components/PlanetHomeView';
 import { SpaceSectorMap } from './components/SpaceSectorMap';
+import { OnlineBattleView } from './components/OnlineBattleView';
 import { SectorTerminal } from './components/SectorTerminal';
 import { ProgressManagerModal } from './components/ProgressManagerModal';
 import { WrongReviewModal } from './components/WrongReviewModal';
 import { SpaceFairyGuide } from './components/SpaceFairyGuide';
 import { CelebrationBurst, CelebrationPayload } from './components/CelebrationBurst';
+
+export type { ProfileRecord } from './types';
 
 function normalizeProfile(raw: Partial<ProfileRecord>, fallbackName: string): ProfileRecord {
   const base = createInitialProfile(raw.name || fallbackName);
@@ -39,17 +56,21 @@ function normalizeProfile(raw: Partial<ProfileRecord>, fallbackName: string): Pr
       if (!incoming) continue;
 
       const sectorDef = SECTORS.find((s) => s.id === key);
-      const subLevels = { ...(incoming.subLevels ?? {}) };
+      const rawSubLevels = incoming.subLevels ?? {};
+      const subLevels: Record<string, SubLevelProgress> = {};
 
-      // Smooth migration: if legacy quiz answers or completion exist without subLevels, backfill them
-      if (sectorDef && Object.keys(subLevels).length === 0) {
+      if (sectorDef && Object.keys(rawSubLevels).length === 0) {
+        // Legacy v2/v3 migration: backfill subLevels from top-level answers
         sectorDef.subLessons.forEach((sub) => {
           const subAnswers: Record<number, number> = {};
+          const subAnswersById: Record<string, number> = {};
           let correct = 0;
           sub.questionIndices.forEach((qi) => {
-            if (incoming.answers && incoming.answers[qi] !== undefined) {
+            const quiz = sectorDef.quizzes[qi];
+            if (incoming.answers && incoming.answers[qi] !== undefined && quiz) {
               subAnswers[qi] = incoming.answers[qi];
-              if (incoming.answers[qi] === sectorDef.quizzes[qi]?.ans) {
+              subAnswersById[quiz.id] = incoming.answers[qi];
+              if (incoming.answers[qi] === quiz.ans) {
                 correct += 1;
               }
             }
@@ -58,7 +79,50 @@ function normalizeProfile(raw: Partial<ProfileRecord>, fallbackName: string): Pr
             completed: Boolean(incoming.quiz),
             bestScore: incoming.quiz ? sub.questionIndices.length : correct,
             answers: subAnswers,
+            answersById: subAnswersById,
           };
+        });
+      } else {
+        // Migrate existing subLevels to include answersById mapped via stable question IDs
+        for (const [subId, sp] of Object.entries(rawSubLevels)) {
+          const answersById: Record<string, number> = { ...(sp.answersById ?? {}) };
+          if (sectorDef && sp.answers) {
+            for (const [qiStr, opt] of Object.entries(sp.answers)) {
+              const qi = Number(qiStr);
+              const quiz = sectorDef.quizzes[qi];
+              if (quiz && answersById[quiz.id] === undefined) {
+                answersById[quiz.id] = opt;
+              }
+            }
+          }
+          subLevels[subId] = {
+            completed: Boolean(sp.completed),
+            bestScore: typeof sp.bestScore === 'number' ? sp.bestScore : 0,
+            answers: { ...(sp.answers ?? {}) },
+            answersById,
+          };
+        }
+      }
+
+      const answersById: Record<string, number> = { ...(incoming.answersById ?? {}) };
+      if (sectorDef && incoming.answers) {
+        for (const [qiStr, opt] of Object.entries(incoming.answers)) {
+          const qi = Number(qiStr);
+          const quiz = sectorDef.quizzes[qi];
+          if (quiz && answersById[quiz.id] === undefined) {
+            answersById[quiz.id] = opt;
+          }
+        }
+      }
+
+      const wrongQuestions = Array.isArray(incoming.wrongQuestions) ? incoming.wrongQuestions : [];
+      const wrongIdSet = new Set<string>(
+        Array.isArray(incoming.wrongQuestionIds) ? incoming.wrongQuestionIds : []
+      );
+      if (sectorDef) {
+        wrongQuestions.forEach((qi) => {
+          const quiz = sectorDef.quizzes[qi];
+          if (quiz) wrongIdSet.add(quiz.id);
         });
       }
 
@@ -66,66 +130,68 @@ function normalizeProfile(raw: Partial<ProfileRecord>, fallbackName: string): Pr
         ...createEmptySectorProgress(),
         ...incoming,
         warmup: Boolean(incoming.warmup),
+        answersById,
         subLevels,
-        wrongQuestions: Array.isArray(incoming.wrongQuestions) ? incoming.wrongQuestions : [],
+        wrongQuestions,
+        wrongQuestionIds: Array.from(wrongIdSet),
       };
     }
   }
 
+  const resolvedScore = typeof raw.totalScore === 'number' ? raw.totalScore : base.totalScore;
+  const { nextBadges } = reconcileAchievementBadges(
+    resolvedScore,
+    Array.isArray(raw.achievementBadges) ? raw.achievementBadges : []
+  );
+
   return {
     name: raw.name || fallbackName,
     sectors: merged,
-    totalScore: typeof raw.totalScore === 'number' ? raw.totalScore : base.totalScore,
+    totalScore: resolvedScore,
+    achievementBadges: nextBadges,
+    claimedBattleRooms: Array.isArray(raw.claimedBattleRooms) ? raw.claimedBattleRooms : [],
     updatedAt: typeof raw.updatedAt === 'number' ? raw.updatedAt : Date.now(),
+  };
+}
+
+function hydrateStore(parsed: Partial<MultiProfileStore>, defaultTheme?: ThemeMode): MultiProfileStore | null {
+  if (!parsed || !parsed.profiles || Object.keys(parsed.profiles).length === 0) return null;
+  const cleanedProfiles: Record<string, ProfileRecord> = {};
+  for (const [k, v] of Object.entries(parsed.profiles)) {
+    cleanedProfiles[k] = normalizeProfile(v, k);
+  }
+  const activeName =
+    parsed.activeName && cleanedProfiles[parsed.activeName]
+      ? parsed.activeName
+      : Object.keys(cleanedProfiles)[0];
+  return {
+    activeName,
+    profiles: cleanedProfiles,
+    mode: parsed.mode === 'projector' ? 'projector' : 'student',
+    theme: defaultTheme ?? (parsed.theme === 'light' ? 'light' : 'dark'),
   };
 }
 
 function loadMultiProfileStore(): MultiProfileStore {
   try {
+    const rawV5 = localStorage.getItem(STORAGE_KEY_V5);
+    if (rawV5) {
+      const hydrated = hydrateStore(JSON.parse(rawV5) as Partial<MultiProfileStore>);
+      if (hydrated) return hydrated;
+    }
+
     const rawV4 = localStorage.getItem(STORAGE_KEY_V4);
     if (rawV4) {
-      const parsed = JSON.parse(rawV4) as Partial<MultiProfileStore>;
-      if (parsed && parsed.profiles && Object.keys(parsed.profiles).length > 0) {
-        const cleanedProfiles: Record<string, ProfileRecord> = {};
-        for (const [k, v] of Object.entries(parsed.profiles)) {
-          cleanedProfiles[k] = normalizeProfile(v, k);
-        }
-        const activeName =
-          parsed.activeName && cleanedProfiles[parsed.activeName]
-            ? parsed.activeName
-            : Object.keys(cleanedProfiles)[0];
-        return {
-          activeName,
-          profiles: cleanedProfiles,
-          mode: parsed.mode === 'projector' ? 'projector' : 'student',
-          theme: parsed.theme === 'light' ? 'light' : 'dark',
-        };
-      }
+      const hydrated = hydrateStore(JSON.parse(rawV4) as Partial<MultiProfileStore>);
+      if (hydrated) return hydrated;
     }
 
-    // Migrate from v3 (upgrading default theme to 'dark' so user lands on Animated Space Solar System)
     const rawV3 = localStorage.getItem(STORAGE_KEY_V3);
     if (rawV3) {
-      const parsed = JSON.parse(rawV3) as Partial<MultiProfileStore>;
-      if (parsed && parsed.profiles && Object.keys(parsed.profiles).length > 0) {
-        const cleanedProfiles: Record<string, ProfileRecord> = {};
-        for (const [k, v] of Object.entries(parsed.profiles)) {
-          cleanedProfiles[k] = normalizeProfile(v, k);
-        }
-        const activeName =
-          parsed.activeName && cleanedProfiles[parsed.activeName]
-            ? parsed.activeName
-            : Object.keys(cleanedProfiles)[0];
-        return {
-          activeName,
-          profiles: cleanedProfiles,
-          mode: parsed.mode === 'projector' ? 'projector' : 'student',
-          theme: 'dark',
-        };
-      }
+      const hydrated = hydrateStore(JSON.parse(rawV3) as Partial<MultiProfileStore>, 'dark');
+      if (hydrated) return hydrated;
     }
 
-    // Migrate from v2 if present
     const rawV2 = localStorage.getItem(LEGACY_STORAGE_KEY);
     if (rawV2) {
       const parsedV2 = JSON.parse(rawV2) as {
@@ -164,14 +230,24 @@ export default function App() {
   const [showWrongModal, setShowWrongModal] = useState(false);
   const [celebration, setCelebration] = useState<CelebrationPayload | null>(null);
 
-  const triggerCelebration = (title: string, subtitle: string, bonusText: string) => {
-    setCelebration({
-      id: Date.now(),
-      title,
-      subtitle,
-      bonusText,
-    });
-  };
+  const triggerCelebration = useCallback(
+    (
+      title: string,
+      subtitle: string,
+      bonusText: string,
+      badge?: SpaceAchievementBadge
+    ) => {
+      soundEngine.playCelebrate();
+      setCelebration({
+        id: Date.now(),
+        title,
+        subtitle,
+        bonusText,
+        badge,
+      });
+    },
+    []
+  );
 
   useEffect(() => {
     if (!celebration) return;
@@ -186,7 +262,7 @@ export default function App() {
 
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEY_V4, JSON.stringify(store));
+      localStorage.setItem(STORAGE_KEY_V5, JSON.stringify(store));
     } catch {
       // Ignore storage quota errors
     }
@@ -195,12 +271,46 @@ export default function App() {
   const activeProfile =
     store.profiles[store.activeName] ?? createInitialProfile(store.activeName);
 
+  const prevBadgesRef = useRef<{ name: string; badges: string[] }>({
+    name: store.activeName,
+    badges: activeProfile.achievementBadges ?? [],
+  });
+
+  useEffect(() => {
+    const currentBadges = activeProfile.achievementBadges ?? [];
+    if (prevBadgesRef.current.name !== store.activeName) {
+      prevBadgesRef.current = { name: store.activeName, badges: currentBadges };
+      return;
+    }
+
+    const prevSet = new Set(prevBadgesRef.current.badges);
+    const addedIds = currentBadges.filter((id) => !prevSet.has(id));
+    prevBadgesRef.current = { name: store.activeName, badges: currentBadges };
+
+    if (addedIds.length > 0) {
+      const unlockedDefs = SPACE_ACHIEVEMENT_BADGES.filter((b) => addedIds.includes(b.id));
+      const topBadge = unlockedDefs[unlockedDefs.length - 1];
+      if (topBadge) {
+        triggerCelebration(
+          `解鎖太空徽章：${topBadge.title}`,
+          `總積分達 ${topBadge.threshold} 分 · 晉升「${topBadge.rankLabel}」`,
+          `${topBadge.threshold} 分達成`,
+          topBadge
+        );
+      }
+    }
+  }, [store.activeName, activeProfile.achievementBadges, triggerCelebration]);
+
   const wrongCount = useMemo(
     () =>
-      SECTOR_KEYS_SAFE.reduce(
-        (acc, key) => acc + (activeProfile.sectors[key].wrongQuestions?.length ?? 0),
-        0
-      ),
+      SECTOR_KEYS_SAFE.reduce((acc, key) => {
+        const sp = activeProfile.sectors[key];
+        const count =
+          sp.wrongQuestionIds && sp.wrongQuestionIds.length > 0
+            ? sp.wrongQuestionIds.length
+            : sp.wrongQuestions?.length ?? 0;
+        return acc + count;
+      }, 0),
     [activeProfile]
   );
 
@@ -239,21 +349,27 @@ export default function App() {
     setLastQuizOutcome(null);
   };
 
-  const updateActiveProfile = (updater: (p: ProfileRecord) => ProfileRecord) => {
+  const updateActiveProfile = useCallback((updater: (p: ProfileRecord) => ProfileRecord) => {
     setStore((prev) => {
       const cur = prev.profiles[prev.activeName] ?? createInitialProfile(prev.activeName);
+      const updated = updater(cur);
+      const { nextBadges } = reconcileAchievementBadges(
+        updated.totalScore,
+        updated.achievementBadges ?? []
+      );
       return {
         ...prev,
         profiles: {
           ...prev.profiles,
           [prev.activeName]: {
-            ...updater(cur),
+            ...updated,
+            achievementBadges: nextBadges,
             updatedAt: Date.now(),
           },
         },
       };
     });
-  };
+  }, []);
 
   const handleSetTheme = (theme: ThemeMode) => {
     setStore((prev) => ({ ...prev, theme }));
@@ -312,6 +428,7 @@ export default function App() {
   const handleAnswerSubQuiz = (
     sectorId: SectorId,
     subId: string,
+    qId: string,
     qIdx: number,
     optIdx: number,
     isCorrect: boolean
@@ -320,50 +437,83 @@ export default function App() {
     const subDef = sectorDef?.subLessons.find((s) => s.id === subId);
     if (!sectorDef || !subDef) return;
 
+    const subQuestions = getSubLessonQuestions(sectorDef, subDef);
     const currentTarget = activeProfile.sectors[sectorId];
     const currentSub = currentTarget.subLevels?.[subId] ?? createEmptySubLevelProgress();
-    const previewAnswers = { ...currentSub.answers, [qIdx]: optIdx };
-    const previewAllAnswered = subDef.questionIndices.every((qi) => previewAnswers[qi] !== undefined);
-    const previewCorrect = subDef.questionIndices.filter(
-      (qi) => previewAnswers[qi] === sectorDef.quizzes[qi]?.ans
-    ).length;
-    const previewPass = previewCorrect >= Math.ceil(subDef.questionIndices.length * 0.6);
+    const alreadyAnswered =
+      (currentSub.answersById && currentSub.answersById[qId] !== undefined) ||
+      (qIdx >= 0 && currentSub.answers[qIdx] !== undefined);
+
+    const previewAnswersById = { ...(currentSub.answersById ?? {}), [qId]: optIdx };
+    const previewAnswers = { ...currentSub.answers };
+    if (qIdx >= 0) previewAnswers[qIdx] = optIdx;
+
+    const previewAllAnswered = subQuestions.every((item) => {
+      const idx = sectorDef.quizzes.findIndex((qq) => qq.id === item.id);
+      return previewAnswersById[item.id] !== undefined || (idx >= 0 && previewAnswers[idx] !== undefined);
+    });
+    const previewCorrect = subQuestions.filter((item) => {
+      const idx = sectorDef.quizzes.findIndex((qq) => qq.id === item.id);
+      const picked = previewAnswersById[item.id] ?? (idx >= 0 ? previewAnswers[idx] : undefined);
+      return picked === item.ans;
+    }).length;
+    const previewPass = previewCorrect >= Math.ceil(subQuestions.length * 0.6);
     const willCelebrateSub =
-      currentSub.answers[qIdx] === undefined &&
-      previewAllAnswered &&
-      previewPass &&
-      !currentSub.completed;
+      !alreadyAnswered && previewAllAnswered && previewPass && !currentSub.completed;
 
     updateActiveProfile((prof) => {
       const target = prof.sectors[sectorId];
       const prevSub = target.subLevels?.[subId] ?? createEmptySubLevelProgress();
-      if (prevSub.answers[qIdx] !== undefined) return prof;
+      if (
+        (prevSub.answersById && prevSub.answersById[qId] !== undefined) ||
+        (qIdx >= 0 && prevSub.answers[qIdx] !== undefined)
+      ) {
+        return prof;
+      }
 
-      const nextAnswers = { ...prevSub.answers, [qIdx]: optIdx };
-      const allSubAnswered = subDef.questionIndices.every((qi) => nextAnswers[qi] !== undefined);
-      const subCorrectCount = subDef.questionIndices.filter(
-        (qi) => nextAnswers[qi] === sectorDef.quizzes[qi]?.ans
-      ).length;
-      const passSub = subCorrectCount >= Math.ceil(subDef.questionIndices.length * 0.6);
+      const nextAnswersById = { ...(prevSub.answersById ?? {}), [qId]: optIdx };
+      const nextAnswers = { ...prevSub.answers };
+      if (qIdx >= 0) nextAnswers[qIdx] = optIdx;
+
+      const allSubAnswered = subQuestions.every((item) => {
+        const idx = sectorDef.quizzes.findIndex((qq) => qq.id === item.id);
+        return nextAnswersById[item.id] !== undefined || (idx >= 0 && nextAnswers[idx] !== undefined);
+      });
+      const subCorrectCount = subQuestions.filter((item) => {
+        const idx = sectorDef.quizzes.findIndex((qq) => qq.id === item.id);
+        const picked = nextAnswersById[item.id] ?? (idx >= 0 ? nextAnswers[idx] : undefined);
+        return picked === item.ans;
+      }).length;
+      const passSub = subCorrectCount >= Math.ceil(subQuestions.length * 0.6);
 
       const newlyCompletedSub = allSubAnswered && passSub && !prevSub.completed;
-      const nextSubLevels = {
+      const nextSubLevels: Record<string, SubLevelProgress> = {
         ...(target.subLevels ?? {}),
         [subId]: {
           completed: prevSub.completed || (allSubAnswered && passSub),
           bestScore: Math.max(prevSub.bestScore, subCorrectCount),
           answers: nextAnswers,
+          answersById: nextAnswersById,
         },
       };
 
       const allSubsDone = sectorDef.subLessons.every((s) => nextSubLevels[s.id]?.completed);
       const existingWrong = target.wrongQuestions ?? [];
+      const existingWrongIds = target.wrongQuestionIds ?? [];
+
       const nextWrong =
-        !isCorrect && !existingWrong.includes(qIdx)
+        !isCorrect && qIdx >= 0 && !existingWrong.includes(qIdx)
           ? [...existingWrong, qIdx]
           : existingWrong;
+      const nextWrongIds =
+        !isCorrect && !existingWrongIds.includes(qId)
+          ? [...existingWrongIds, qId]
+          : existingWrongIds;
 
       const scoreGain = (isCorrect ? 15 : 0) + (newlyCompletedSub ? 30 : 0);
+
+      const nextTopAnswers = { ...target.answers };
+      if (qIdx >= 0) nextTopAnswers[qIdx] = optIdx;
 
       return {
         ...prof,
@@ -373,9 +523,11 @@ export default function App() {
           [sectorId]: {
             ...target,
             quiz: target.quiz || allSubsDone,
-            answers: { ...target.answers, [qIdx]: optIdx },
+            answers: nextTopAnswers,
+            answersById: { ...(target.answersById ?? {}), [qId]: optIdx },
             subLevels: nextSubLevels,
             wrongQuestions: nextWrong,
+            wrongQuestionIds: nextWrongIds,
           },
         },
       };
@@ -405,6 +557,7 @@ export default function App() {
               [subId]: {
                 ...prevSub,
                 answers: {},
+                answersById: {},
               },
             },
           },
@@ -434,10 +587,11 @@ export default function App() {
     }
   };
 
-  const handleResolveWrong = (sectorId: SectorId, qIdx: number) => {
+  const handleResolveWrong = (sectorId: SectorId, qId: string, qIdx: number) => {
     updateActiveProfile((prof) => {
       const target = prof.sectors[sectorId];
       const nextWrong = (target.wrongQuestions ?? []).filter((id) => id !== qIdx);
+      const nextWrongIds = (target.wrongQuestionIds ?? []).filter((id) => id !== qId);
       return {
         ...prof,
         totalScore: prof.totalScore + 5,
@@ -446,11 +600,33 @@ export default function App() {
           [sectorId]: {
             ...target,
             wrongQuestions: nextWrong,
+            wrongQuestionIds: nextWrongIds,
           },
         },
       };
     });
   };
+
+  const handleClaimBattleBonus = useCallback(
+    (roomCode: string, bonusScore: number, isWinner: boolean) => {
+      const alreadyClaimed = activeProfile.claimedBattleRooms?.includes(roomCode);
+      if (alreadyClaimed) return;
+      updateActiveProfile((prof) => {
+        if (prof.claimedBattleRooms?.includes(roomCode)) return prof;
+        return {
+          ...prof,
+          totalScore: prof.totalScore + bonusScore,
+          claimedBattleRooms: [...(prof.claimedBattleRooms ?? []), roomCode],
+        };
+      });
+      triggerCelebration(
+        isWinner ? '線上對戰稱霸全場！' : '星際線上對戰完成！',
+        `房號 ${roomCode} 實戰結算獎勵已入帳`,
+        `+${bonusScore} 分`
+      );
+    },
+    [activeProfile.claimedBattleRooms, triggerCelebration, updateActiveProfile]
+  );
 
   const handleSwitchProfile = (name: string) => {
     setStore((prev) => {
@@ -539,129 +715,143 @@ export default function App() {
   };
 
   return (
-    <ThemeContext.Provider value={store.theme}>
-      <div
-        className={`relative min-h-screen transition-colors ${
-          store.theme === 'dark' ? 'space-grid-bg bg-[#070B14] text-slate-100' : 'light-sky-bg text-slate-900'
-        }`}
-      >
-        {store.theme === 'dark' && <StarfieldCanvas />}
+    <ErrorBoundary>
+      <ThemeContext.Provider value={store.theme}>
+        <div
+          className={`relative min-h-screen transition-colors ${
+            store.theme === 'dark' ? 'space-grid-bg bg-[#070B14] text-slate-100' : 'light-sky-bg text-slate-900'
+          }`}
+        >
+          {store.theme === 'dark' && <StarfieldCanvas />}
 
-        <div className="relative z-10 flex min-h-screen flex-col">
-          <TopBar
-            activeSectorId={activeSectorId}
-            homeView={homeView}
+          <div className="relative z-10 flex min-h-screen flex-col">
+            <TopBar
+              activeSectorId={activeSectorId}
+              homeView={homeView}
+              theme={store.theme}
+              wrongCount={wrongCount}
+              onGoHomePlanet={() => {
+                setActiveSectorId(null);
+                setHomeView('planet');
+                setLastQuizOutcome(null);
+              }}
+              onGoHomeGrid={() => {
+                setActiveSectorId(null);
+                setHomeView('grid');
+                setLastQuizOutcome(null);
+              }}
+              onGoBattle={() => {
+                setActiveSectorId(null);
+                setHomeView('battle');
+                setLastQuizOutcome(null);
+              }}
+              onOpenProgress={() => setShowProgressModal(true)}
+              onOpenWrongReview={() => setShowWrongModal(true)}
+              onToggleTheme={handleToggleTheme}
+            />
+
+            <main className="flex-1 pb-24">
+              {activeSector ? (
+                <SectorTerminal
+                  key={activeSector.id}
+                  sector={activeSector}
+                  profile={activeProfile}
+                  mode={store.mode}
+                  activeTab={activeTab}
+                  activeSubId={activeSubLesson?.id ?? activeSubId}
+                  onChangeTab={(t) => {
+                    setActiveTab(t);
+                    setLastQuizOutcome(null);
+                  }}
+                  onSelectSubId={(subId) => {
+                    setActiveSubId(subId);
+                    setLastQuizOutcome(null);
+                  }}
+                  onBackToHome={() => {
+                    setActiveSectorId(null);
+                    setLastQuizOutcome(null);
+                  }}
+                  onSelectSector={selectSector}
+                  onChangeMode={handleChangeMode}
+                  onCompleteSlides={handleCompleteSlides}
+                  onCompleteWarmup={handleCompleteWarmup}
+                  onAnswerSubQuiz={handleAnswerSubQuiz}
+                  onResetSubQuiz={handleResetSubQuiz}
+                  onCompleteLab={handleCompleteLab}
+                  onFeedback={(outcome) => setLastQuizOutcome(outcome)}
+                />
+              ) : homeView === 'planet' ? (
+                <PlanetHomeView
+                  profile={activeProfile}
+                  mode={store.mode}
+                  theme={store.theme}
+                  wrongCount={wrongCount}
+                  onSelectSector={selectSector}
+                  onSwitchToGrid={() => setHomeView('grid')}
+                  onOpenBattle={() => setHomeView('battle')}
+                  onToggleTheme={handleSetTheme}
+                  onChangeMode={handleChangeMode}
+                  onOpenProgressModal={() => setShowProgressModal(true)}
+                  onOpenWrongModal={() => setShowWrongModal(true)}
+                />
+              ) : homeView === 'battle' ? (
+                <OnlineBattleView
+                  profile={activeProfile}
+                  onClaimBattleBonus={handleClaimBattleBonus}
+                  onBackToHome={() => setHomeView('planet')}
+                />
+              ) : (
+                <SpaceSectorMap
+                  profile={activeProfile}
+                  mode={store.mode}
+                  theme={store.theme}
+                  onSelectSector={selectSector}
+                  onChangeMode={handleChangeMode}
+                  onSwitchToPlanet={() => setHomeView('planet')}
+                  onOpenProgressModal={() => setShowProgressModal(true)}
+                />
+              )}
+            </main>
+          </div>
+
+          {/* Blue老師課堂巡遊小精靈 */}
+          <SpaceFairyGuide
             theme={store.theme}
-            wrongCount={wrongCount}
-            onGoHomePlanet={() => {
-              setActiveSectorId(null);
-              setHomeView('planet');
-              setLastQuizOutcome(null);
-            }}
-            onGoHomeGrid={() => {
-              setActiveSectorId(null);
-              setHomeView('grid');
-              setLastQuizOutcome(null);
-            }}
-            onOpenProgress={() => setShowProgressModal(true)}
-            onOpenWrongReview={() => setShowWrongModal(true)}
-            onToggleTheme={handleToggleTheme}
+            mode={store.mode}
+            activeSector={activeSector}
+            activeTab={activeTab}
+            activeSubLesson={activeSubLesson}
+            lastQuizOutcome={lastQuizOutcome}
+            totalEarnedStars={totalEarnedStars}
+            totalSystemStars={totalSystemStars}
           />
 
-          <main className="flex-1 pb-24">
-            {activeSector ? (
-              <SectorTerminal
-                key={activeSector.id}
-                sector={activeSector}
-                profile={activeProfile}
-                mode={store.mode}
-                activeTab={activeTab}
-                activeSubId={activeSubLesson?.id ?? activeSubId}
-                onChangeTab={(t) => {
-                  setActiveTab(t);
-                  setLastQuizOutcome(null);
-                }}
-                onSelectSubId={(subId) => {
-                  setActiveSubId(subId);
-                  setLastQuizOutcome(null);
-                }}
-                onBackToHome={() => {
-                  setActiveSectorId(null);
-                  setLastQuizOutcome(null);
-                }}
-                onSelectSector={selectSector}
-                onChangeMode={handleChangeMode}
-                onCompleteSlides={handleCompleteSlides}
-                onCompleteWarmup={handleCompleteWarmup}
-                onAnswerSubQuiz={handleAnswerSubQuiz}
-                onResetSubQuiz={handleResetSubQuiz}
-                onCompleteLab={handleCompleteLab}
-                onFeedback={(outcome) => setLastQuizOutcome(outcome)}
-              />
-            ) : homeView === 'planet' ? (
-              <PlanetHomeView
-                profile={activeProfile}
-                mode={store.mode}
-                theme={store.theme}
-                wrongCount={wrongCount}
-                onSelectSector={selectSector}
-                onSwitchToGrid={() => setHomeView('grid')}
-                onToggleTheme={handleSetTheme}
-                onChangeMode={handleChangeMode}
-                onOpenProgressModal={() => setShowProgressModal(true)}
-                onOpenWrongModal={() => setShowWrongModal(true)}
-              />
-            ) : (
-              <SpaceSectorMap
-                profile={activeProfile}
-                mode={store.mode}
-                theme={store.theme}
-                onSelectSector={selectSector}
-                onChangeMode={handleChangeMode}
-                onSwitchToPlanet={() => setHomeView('planet')}
-                onOpenProgressModal={() => setShowProgressModal(true)}
-              />
-            )}
-          </main>
+          {/* 非阻斷式破關星芒祝賀特效 */}
+          <CelebrationBurst
+            celebration={celebration}
+            onDismiss={() => setCelebration(null)}
+          />
+
+          {showProgressModal && (
+            <ProgressManagerModal
+              store={store}
+              onClose={() => setShowProgressModal(false)}
+              onSwitchProfile={handleSwitchProfile}
+              onClearSector={handleClearSector}
+              onClearAll={handleClearAll}
+              onImportBackup={handleImportBackup}
+            />
+          )}
+
+          {showWrongModal && (
+            <WrongReviewModal
+              profile={activeProfile}
+              onClose={() => setShowWrongModal(false)}
+              onResolveWrong={handleResolveWrong}
+            />
+          )}
         </div>
-
-        {/* Blue老師課堂巡遊小精靈 */}
-        <SpaceFairyGuide
-          theme={store.theme}
-          mode={store.mode}
-          activeSector={activeSector}
-          activeTab={activeTab}
-          activeSubLesson={activeSubLesson}
-          lastQuizOutcome={lastQuizOutcome}
-          totalEarnedStars={totalEarnedStars}
-          totalSystemStars={totalSystemStars}
-        />
-
-        {/* 非阻斷式破關星芒祝賀特效 */}
-        <CelebrationBurst
-          celebration={celebration}
-          onDismiss={() => setCelebration(null)}
-        />
-
-        {showProgressModal && (
-          <ProgressManagerModal
-            store={store}
-            onClose={() => setShowProgressModal(false)}
-            onSwitchProfile={handleSwitchProfile}
-            onClearSector={handleClearSector}
-            onClearAll={handleClearAll}
-            onImportBackup={handleImportBackup}
-          />
-        )}
-
-        {showWrongModal && (
-          <WrongReviewModal
-            profile={activeProfile}
-            onClose={() => setShowWrongModal(false)}
-            onResolveWrong={handleResolveWrong}
-          />
-        )}
-      </div>
-    </ThemeContext.Provider>
+      </ThemeContext.Provider>
+    </ErrorBoundary>
   );
 }

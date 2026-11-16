@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { CheckCircle2, Grid3X3, Link2, RotateCcw, Sparkles } from 'lucide-react';
 import { ConceptMatchWarmup, GeometryLayoutWarmup, SectorData } from '../data/sectors';
+import { soundEngine } from '../utils/soundEngine';
 
 interface WarmupChallengeViewProps {
   sector: SectorData;
@@ -48,6 +49,7 @@ function ConceptMatchBoard({
 
   const handleSelectLeft = (id: string) => {
     if (matchedIds.includes(id)) return;
+    soundEngine.playClick();
     setErrorPair(null);
     setSelectedLeft((prev) => (prev === id ? null : id));
   };
@@ -55,6 +57,7 @@ function ConceptMatchBoard({
   const handleSelectRight = (rightId: string) => {
     if (!selectedLeft || matchedIds.includes(rightId)) return;
     if (selectedLeft === rightId) {
+      soundEngine.playMatchSuccess();
       const next = [...matchedIds, rightId];
       setMatchedIds(next);
       setSelectedLeft(null);
@@ -64,6 +67,7 @@ function ConceptMatchBoard({
         onComplete();
       }
     } else {
+      soundEngine.playWrong();
       setErrorPair('這個配對不太對喔！再觀察一下左側觀念與右側敘述的關係。');
       setSelectedLeft(null);
       onFeedback?.('wrong');
@@ -286,6 +290,7 @@ function GeometryLayoutPad({
   const [statusNote, setStatusNote] = useState<{ ok: boolean; msg: string } | null>(null);
 
   const toggleCell = (r: number, c: number) => {
+    soundEngine.playClick();
     setStatusNote(null);
     setCells((prev) =>
       prev.map((row, ri) =>
@@ -331,10 +336,12 @@ function GeometryLayoutPad({
     if (mode === 'symmetry-area') {
       const target = warmup.targetArea ?? 8;
       if (totalSum === target && isSymmetric) {
+        soundEngine.playMatchSuccess();
         setStatusNote({ ok: true, msg: '驗證成功！圖形完美左右對稱且面積恰為 8 平方單位，獲得熱身星星（+25分）！' });
         onFeedback?.('correct');
         onComplete();
       } else {
+        soundEngine.playWrong();
         setStatusNote({
           ok: false,
           msg: `目前面積為 ${totalSum} 格，${isSymmetric ? '已對稱，請將總格數調為 8 格' : '左右尚未沿黃色中線完全對稱'}。`,
@@ -351,10 +358,12 @@ function GeometryLayoutPad({
         rowCounts[2] === 3 &&
         rowCounts[3] === 4;
       if (ok) {
+        soundEngine.playMatchSuccess();
         setStatusNote({ ok: true, msg: '太厲害了！1＋2＋3＋4 ＝ 10 階梯三角數陣佈置成功，獲得熱身星星（+25分）！' });
         onFeedback?.('correct');
         onComplete();
       } else {
+        soundEngine.playWrong();
         setStatusNote({
           ok: false,
           msg: `各列格數目前為 [${rowCounts.join(', ')}]，請依序佈置成 [1, 2, 3, 4] 階梯。`,
@@ -373,10 +382,12 @@ function GeometryLayoutPad({
       frontHeights[2] === targetF[2];
 
     if (totalSum === targetCubes && matchFront && topCount === targetTop) {
+      soundEngine.playMatchSuccess();
       setStatusNote({ ok: true, msg: '空間投影完全吻合！5 塊積木同時符合正視圖 [2,1,1] 與俯視圖 4 格，獲得熱身星星（+25分）！' });
       onFeedback?.('correct');
       onComplete();
     } else {
+      soundEngine.playWrong();
       setStatusNote({
         ok: false,
         msg: `目前積木共 ${totalSum} 塊（目標 ${targetCubes}）、正視圖 [${frontHeights.join(',')}]（目標 [${targetF.join(',')}]）、俯視圖 ${topCount} 格（目標 ${targetTop}）。`,
