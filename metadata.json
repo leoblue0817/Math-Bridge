@@ -1,0 +1,6 @@
+{
+  "name": "星際數學領航艦｜小六升國一銜接島嶼闖關",
+  "description": "專為小六升國一數學銜接設計的太空艙浮空島嶼闖關網頁，結合四則運算、因數倍數、奇偶曆法與綜合演練，包含互動教學、即時題庫與創意數學實驗室。",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

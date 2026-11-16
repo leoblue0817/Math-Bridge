@@ -1,0 +1,273 @@
+import { CheckCircle2, Circle, Globe2, Monitor, Rocket, SlidersHorizontal, User } from 'lucide-react';
+import { SECTORS, getSectorStarStats, getTotalSystemStars } from '../data/sectors';
+import { AppMode, ProfileRecord, SectorId, ThemeMode } from '../types';
+
+interface SpaceSectorMapProps {
+  profile: ProfileRecord;
+  mode: AppMode;
+  theme: ThemeMode;
+  onSelectSector: (id: SectorId) => void;
+  onChangeMode: (mode: AppMode) => void;
+  onSwitchToPlanet: () => void;
+  onOpenProgressModal: () => void;
+}
+
+function SectorOrbitIcon({ sectorId, theme }: { sectorId: SectorId; theme: ThemeMode }) {
+  const accentMap: Record<SectorId, string> = {
+    s1: '#0284C7',
+    s2: '#D97706',
+    s3: '#059669',
+    s4: '#7C3AED',
+    s5: '#E11D48',
+    s6: '#0D9488',
+    s7: '#EA580C',
+    s8: '#2563EB',
+  };
+  const stroke = accentMap[sectorId];
+  const isDark = theme === 'dark';
+
+  return (
+    <svg width="42" height="42" viewBox="0 0 42 42" aria-hidden="true" className="shrink-0">
+      <circle
+        cx="21"
+        cy="21"
+        r="18"
+        fill={isDark ? 'rgba(15, 23, 42, 0.9)' : '#F1F5F9'}
+        stroke={isDark ? '#1E293B' : '#CBD5E1'}
+        strokeWidth="1.5"
+      />
+      <ellipse
+        cx="21"
+        cy="21"
+        rx="15"
+        ry="6.5"
+        transform="rotate(-22 21 21)"
+        fill="none"
+        stroke={stroke}
+        strokeOpacity="0.55"
+        strokeWidth="1.4"
+      />
+      <circle cx="21" cy="21" r="7.5" fill={stroke} fillOpacity="0.22" stroke={stroke} strokeWidth="1.6" />
+      <circle cx="32" cy="15" r="2.2" fill={stroke} />
+    </svg>
+  );
+}
+
+export function SpaceSectorMap({
+  profile,
+  mode,
+  theme,
+  onSelectSector,
+  onChangeMode,
+  onSwitchToPlanet,
+  onOpenProgressModal,
+}: SpaceSectorMapProps) {
+  const totalTasks = getTotalSystemStars(SECTORS);
+
+  const clearedSectorsCount = SECTORS.filter((sec) => {
+    return getSectorStarStats(sec, profile.sectors[sec.id]).allDone;
+  }).length;
+
+  const completedTasksCount = SECTORS.reduce((acc, sec) => {
+    return acc + getSectorStarStats(sec, profile.sectors[sec.id]).earned;
+  }, 0);
+
+  const energyPct = Math.round((completedTasksCount / totalTasks) * 100);
+
+  return (
+    <div className="mx-auto max-w-7xl space-y-8 px-6 pt-8">
+      {/* Cockpit Hero & Classroom Mode Toolbar */}
+      <section className="rounded-2xl border border-slate-200 bg-white/95 p-6 shadow-sm md:p-8 dark:border-slate-800 dark:bg-[#0D1424]/95 dark:shadow-none">
+        <div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-center">
+          <div className="max-w-2xl space-y-2">
+            <div className="text-xs font-semibold text-sky-700 dark:text-cyan-400">
+              小六升國一銜接數學 · 八區航圖總覽（學生：{profile.name}）
+            </div>
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900 md:text-3xl dark:text-white">
+              探索 8 大數學星球，完成簡報、熱身配對、小節微關卡與創意對戰
+            </h1>
+            <p className="text-sm leading-relaxed text-slate-600 md:text-base dark:text-slate-300">
+              每個星域都配有課堂簡報、觀念連連看或幾何圖形佈置熱身、2 至 3 個小節微關卡，以及點格棋、二進位魔術卡、黃黑灰摺紙、數迴、KenKen 數獨、數方、速算與立體積木等實戰遊戲。
+            </p>
+          </div>
+
+          <div className="flex shrink-0 flex-col gap-2 self-start lg:items-end">
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={onSwitchToPlanet}
+                className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-xs font-semibold text-slate-700 hover:border-sky-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+              >
+                <Globe2 className="h-3.5 w-3.5 text-sky-600 dark:text-cyan-400" aria-hidden="true" />
+                <span>返回太陽系星圖</span>
+              </button>
+              <button
+                type="button"
+                onClick={onOpenProgressModal}
+                className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-xs font-semibold text-slate-700 hover:border-sky-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+              >
+                <SlidersHorizontal className="h-3.5 w-3.5" aria-hidden="true" />
+                <span>進度管理</span>
+              </button>
+            </div>
+
+            <div className="inline-flex rounded-xl border border-slate-200 bg-slate-100 p-1 dark:border-slate-700 dark:bg-[#080D1A]">
+              <button
+                type="button"
+                onClick={() => onChangeMode('student')}
+                className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg px-3.5 py-2 text-xs font-semibold transition-colors ${
+                  mode === 'student'
+                    ? 'bg-sky-600 text-white dark:bg-cyan-500 dark:text-slate-950'
+                    : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'
+                }`}
+              >
+                <User className="h-3.5 w-3.5" aria-hidden="true" />
+                <span>學生自學模式</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => onChangeMode('projector')}
+                className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg px-3.5 py-2 text-xs font-semibold transition-colors ${
+                  mode === 'projector'
+                    ? 'bg-amber-500 text-white dark:bg-amber-400 dark:text-slate-950'
+                    : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'
+                }`}
+              >
+                <Monitor className="h-3.5 w-3.5" aria-hidden="true" />
+                <span>教室投影模式</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* 4-Column Cockpit Telemetry Strip */}
+        <div className="mt-6 grid grid-cols-2 gap-4 border-t border-slate-200 pt-6 md:grid-cols-4 dark:border-slate-800">
+          <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3.5 dark:border-slate-800/90 dark:bg-[#080D1A]">
+            <div className="text-xs text-slate-500 dark:text-slate-400">已通關星域</div>
+            <div className="mt-1 font-mono text-2xl font-bold text-slate-900 tabular-nums dark:text-white">
+              {clearedSectorsCount} / 8
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3.5 dark:border-slate-800/90 dark:bg-[#080D1A]">
+            <div className="text-xs text-slate-500 dark:text-slate-400">已收集星星</div>
+            <div className="mt-1 font-mono text-2xl font-bold text-sky-700 tabular-nums dark:text-cyan-300">
+              {completedTasksCount} / {totalTasks}
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3.5 dark:border-slate-800/90 dark:bg-[#080D1A]">
+            <div className="text-xs text-slate-500 dark:text-slate-400">領航艦推進能源</div>
+            <div className="mt-1 font-mono text-2xl font-bold text-emerald-700 tabular-nums dark:text-emerald-300">
+              {energyPct}%
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3.5 dark:border-slate-800/90 dark:bg-[#080D1A]">
+            <div className="text-xs text-slate-500 dark:text-slate-400">累積探索積分</div>
+            <div className="mt-1 font-mono text-2xl font-bold text-amber-600 tabular-nums dark:text-amber-300">
+              {profile.totalScore} 分
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 8-Sector Grid */}
+      <section aria-label="8 大數學銜接星域">
+        <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="text-lg font-bold text-slate-900 dark:text-white">星域任務總覽</h2>
+          <span className="text-xs text-slate-600 dark:text-slate-400">
+            依序完成簡報、熱身關卡、小節微關卡與創意對戰即可點亮該區全部星星
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
+          {SECTORS.map((sec) => {
+            const p = profile.sectors[sec.id];
+            const stats = getSectorStarStats(sec, p);
+            const allDone = stats.allDone;
+
+            const tasks = [
+              { label: '簡報', done: p.slides },
+              { label: '熱身', done: p.warmup },
+              { label: `微關${stats.subDone}/${stats.subTotal}`, done: stats.subDone === stats.subTotal },
+              { label: '創意', done: p.lab },
+            ];
+
+            return (
+              <article
+                key={sec.id}
+                className={`flex flex-col justify-between rounded-2xl border p-5 shadow-sm transition-colors dark:shadow-none ${
+                  allDone
+                    ? 'border-emerald-400/60 bg-emerald-50/40 dark:border-emerald-500/40 dark:bg-[#0D1626]'
+                    : 'border-slate-200 bg-white hover:border-sky-400 dark:border-slate-800 dark:bg-[#0D1424] dark:hover:border-cyan-500/50'
+                }`}
+              >
+                <div>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+                        <span className="font-mono font-semibold text-sky-700 dark:text-cyan-400">
+                          {sec.code}
+                        </span>
+                        <span aria-hidden="true">·</span>
+                        <span>★{stats.earned}/{stats.total}</span>
+                      </div>
+                      <h3 className="mt-1.5 text-lg font-bold text-slate-900 dark:text-white">
+                        {sec.title}
+                      </h3>
+                    </div>
+                    <SectorOrbitIcon sectorId={sec.id} theme={theme} />
+                  </div>
+
+                  <p className="mt-2.5 text-xs leading-relaxed text-slate-600 dark:text-slate-300">
+                    {sec.desc}
+                  </p>
+
+                  <div className="mt-3 border-t border-slate-100 pt-3 text-xs font-medium text-amber-700 dark:border-slate-800/80 dark:text-amber-300">
+                    創意課程：{sec.creativeName}
+                  </div>
+                </div>
+
+                <div className="mt-4 space-y-3 border-t border-slate-100 pt-3.5 dark:border-slate-800/80">
+                  <div className="grid grid-cols-4 gap-1 text-[11px]">
+                    {tasks.map((t) => (
+                      <div
+                        key={t.label}
+                        className={`flex items-center justify-center gap-1 py-1 font-medium ${
+                          t.done
+                            ? 'text-emerald-700 dark:text-emerald-300'
+                            : 'text-slate-400 dark:text-slate-500'
+                        }`}
+                      >
+                        {t.done ? (
+                          <CheckCircle2 className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                        ) : (
+                          <Circle className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                        )}
+                        <span className="truncate">{t.label}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => onSelectSector(sec.id)}
+                    className={`flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors ${
+                      allDone
+                        ? 'border border-emerald-500/40 bg-emerald-100 text-emerald-900 hover:bg-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-200 dark:hover:bg-emerald-500/25'
+                        : 'bg-sky-600 text-white hover:bg-sky-700 dark:bg-cyan-500 dark:text-slate-950 dark:hover:bg-cyan-400'
+                    }`}
+                  >
+                    <Rocket className="h-4 w-4" aria-hidden="true" />
+                    <span>{allDone ? '複習星球任務' : stats.earned > 0 ? '繼續探索星球' : '進入星球任務'}</span>
+                  </button>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      </section>
+    </div>
+  );
+}

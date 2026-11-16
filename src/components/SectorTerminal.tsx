@@ -1,0 +1,475 @@
+import { useContext } from 'react';
+import {
+  ArrowLeft,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  Compass,
+  Gamepad2,
+  Link2,
+  Presentation,
+  Star,
+} from 'lucide-react';
+import { SECTORS, SectorData, getSectorStarStats } from '../data/sectors';
+import { AppMode, ProfileRecord, SectorId, TerminalTab } from '../types';
+import { PLANET_META } from './PlanetHomeView';
+import { ThemeContext } from './ThemeContext';
+import { SlideDeckView } from './SlideDeckView';
+import { WarmupChallengeView } from './WarmupChallengeView';
+import { MicroLevelStageView } from './MicroLevelStageView';
+import { DotsAndBoxesLab } from './labs/DotsAndBoxesLab';
+import { MindReaderCardsLab } from './labs/MindReaderCardsLab';
+import { SymmetryOrigamiLab } from './labs/SymmetryOrigamiLab';
+import { SlitherlinkLab } from './labs/SlitherlinkLab';
+import { KenKenLab } from './labs/KenKenLab';
+import { ShikakuLab } from './labs/ShikakuLab';
+import { QuickCalc24Lab } from './labs/QuickCalc24Lab';
+import { VoxelViewsLab } from './labs/VoxelViewsLab';
+
+interface SectorTerminalProps {
+  sector: SectorData;
+  profile: ProfileRecord;
+  mode: AppMode;
+  activeTab: TerminalTab;
+  activeSubId: string;
+  onChangeTab: (tab: TerminalTab) => void;
+  onSelectSubId: (subId: string) => void;
+  onBackToHome: () => void;
+  onSelectSector: (id: SectorId) => void;
+  onChangeMode: (mode: AppMode) => void;
+  onCompleteSlides: (id: SectorId) => void;
+  onCompleteWarmup: (id: SectorId) => void;
+  onAnswerSubQuiz: (
+    id: SectorId,
+    subId: string,
+    qIdx: number,
+    optIdx: number,
+    isCorrect: boolean
+  ) => void;
+  onResetSubQuiz: (id: SectorId, subId: string) => void;
+  onCompleteLab: (id: SectorId, bonus: number) => void;
+  onFeedback?: (outcome: 'correct' | 'wrong') => void;
+}
+
+function PlanetViewportWindow({ sectorId }: { sectorId: SectorId }) {
+  const theme = useContext(ThemeContext);
+  const meta = PLANET_META[sectorId];
+  const isDark = theme === 'dark';
+
+  return (
+    <div
+      className={`relative flex h-24 w-28 shrink-0 items-center justify-center overflow-hidden rounded-2xl border ${
+        isDark
+          ? 'border-slate-700/80 bg-[#040814]'
+          : 'border-sky-200 bg-gradient-to-b from-sky-500 to-blue-700'
+      }`}
+      aria-hidden="true"
+    >
+      <svg viewBox="0 0 112 96" className="h-full w-full">
+        <defs>
+          <radialGradient id={`vp-grad-${sectorId}`} cx="34%" cy="32%" r="70%">
+            <stop offset="0%" stopColor={meta.colorLight} />
+            <stop offset="55%" stopColor={meta.color} />
+            <stop offset="100%" stopColor={meta.colorDeep} />
+          </radialGradient>
+          <clipPath id={`vp-clip-${sectorId}`}>
+            <circle cx="56" cy="48" r="24" />
+          </clipPath>
+        </defs>
+
+        {/* Background Stars or Clouds */}
+        {isDark ? (
+          <>
+            <circle cx="16" cy="18" r="1.2" fill="#E0F2FE" opacity="0.7" />
+            <circle cx="94" cy="22" r="1.5" fill="#FDE68A" opacity="0.8" />
+            <circle cx="22" cy="78" r="1" fill="#7DD3FC" opacity="0.6" />
+            <circle cx="90" cy="74" r="1.2" fill="#E0F2FE" opacity="0.6" />
+          </>
+        ) : (
+          <g className="animate-cloud-drift" style={{ transformOrigin: '56px 48px' }}>
+            <ellipse cx="28" cy="20" rx="14" ry="5" fill="#FFFFFF" fillOpacity="0.6" />
+            <ellipse cx="86" cy="74" rx="16" ry="5.5" fill="#FFFFFF" fillOpacity="0.5" />
+          </g>
+        )}
+
+        {/* Atmosphere Ring */}
+        <circle
+          cx="56"
+          cy="48"
+          r="32"
+          fill="none"
+          stroke={isDark ? meta.glowColor : '#FFFFFF'}
+          strokeOpacity="0.35"
+          strokeWidth="1.2"
+          strokeDasharray="4 4"
+        />
+
+        {/* Tilted Planetary Ring */}
+        {meta.hasRing && (
+          <ellipse
+            cx="56"
+            cy="48"
+            rx="38"
+            ry="10"
+            transform="rotate(-20 56 48)"
+            fill="none"
+            stroke={meta.glowColor}
+            strokeOpacity="0.85"
+            strokeWidth="3"
+          />
+        )}
+
+        {/* Main Planet */}
+        <circle cx="56" cy="48" r="24" fill={`url(#vp-grad-${sectorId})`} stroke={meta.glowColor} strokeWidth="1" />
+
+        {/* Axial Texture Drift */}
+        <g clipPath={`url(#vp-clip-${sectorId})`}>
+          <g className="animate-planet-axial">
+            <ellipse cx="50" cy="41" rx="20" ry="4" fill={meta.bandColor} fillOpacity="0.45" />
+            <ellipse cx="62" cy="54" rx="16" ry="3.2" fill={meta.bandColor} fillOpacity="0.3" />
+          </g>
+        </g>
+
+        {/* Orbiting Mini Moon */}
+        <g className="animate-orbit-spin" style={{ transformOrigin: '56px 48px', animationDuration: '9s' }}>
+          <circle cx="90" cy="48" r="3.6" fill="#F8FAFC" stroke={meta.glowColor} strokeWidth="1" />
+        </g>
+      </svg>
+    </div>
+  );
+}
+
+export function SectorTerminal({
+  sector,
+  profile,
+  mode,
+  activeTab,
+  activeSubId,
+  onChangeTab,
+  onSelectSubId,
+  onBackToHome,
+  onSelectSector,
+  onChangeMode,
+  onCompleteSlides,
+  onCompleteWarmup,
+  onAnswerSubQuiz,
+  onResetSubQuiz,
+  onCompleteLab,
+  onFeedback,
+}: SectorTerminalProps) {
+  const secProgress = profile.sectors[sector.id];
+  const starStats = getSectorStarStats(sector, secProgress);
+  const progressPct = Math.round((starStats.earned / starStats.total) * 100);
+  const meta = PLANET_META[sector.id];
+
+  const currentIdx = SECTORS.findIndex((s) => s.id === sector.id);
+  const prevSector = currentIdx > 0 ? SECTORS[currentIdx - 1] : null;
+  const nextSector = currentIdx < SECTORS.length - 1 ? SECTORS[currentIdx + 1] : null;
+
+  const questNodes: {
+    id: TerminalTab;
+    stepNum: string;
+    label: string;
+    subLabel: string;
+    icon: typeof Presentation;
+    done: boolean;
+  }[] = [
+    {
+      id: 'slides',
+      stepNum: '01',
+      label: '單元簡報',
+      subLabel: secProgress.slides ? '已過關 ★' : '觀念啟航',
+      icon: Presentation,
+      done: secProgress.slides,
+    },
+    {
+      id: 'warmup',
+      stepNum: '02',
+      label: sector.warmup.type === 'match' ? '觀念連連看' : '圖形佈置熱身',
+      subLabel: secProgress.warmup ? '已過關 ★' : '互動暖身',
+      icon: Link2,
+      done: secProgress.warmup,
+    },
+    {
+      id: 'micro',
+      stepNum: '03',
+      label: '小節微關卡',
+      subLabel: `已奪 ${starStats.subDone}/${starStats.subTotal} 星`,
+      icon: Compass,
+      done: starStats.subDone === starStats.subTotal,
+    },
+    {
+      id: 'lab',
+      stepNum: '04',
+      label: '創意對戰',
+      subLabel: secProgress.lab ? '已過關 ★' : '實戰對決',
+      icon: Gamepad2,
+      done: secProgress.lab,
+    },
+  ];
+
+  const renderLab = () => {
+    const done = secProgress.lab;
+    const finish = (bonus: number) => onCompleteLab(sector.id, bonus);
+
+    switch (sector.id) {
+      case 's1':
+        return <DotsAndBoxesLab isCompleted={done} onComplete={finish} />;
+      case 's2':
+        return <MindReaderCardsLab isCompleted={done} onComplete={finish} />;
+      case 's3':
+        return <SymmetryOrigamiLab isCompleted={done} onComplete={finish} />;
+      case 's4':
+        return <SlitherlinkLab isCompleted={done} onComplete={finish} />;
+      case 's5':
+        return <KenKenLab isCompleted={done} onComplete={finish} />;
+      case 's6':
+        return <ShikakuLab isCompleted={done} onComplete={finish} />;
+      case 's7':
+        return <QuickCalc24Lab isCompleted={done} onComplete={finish} />;
+      case 's8':
+        return <VoxelViewsLab isCompleted={done} onComplete={finish} />;
+    }
+  };
+
+  return (
+    <div className="mx-auto max-w-6xl space-y-6 px-6 pt-6">
+      {/* Planet Cockpit Viewport Banner */}
+      <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white/95 p-5 shadow-sm md:p-6 dark:border-slate-800 dark:bg-[#0D1424]/95 dark:shadow-none">
+        <div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-center">
+          <div className="flex items-center gap-4">
+            <PlanetViewportWindow sectorId={sector.id} />
+
+            <div className="space-y-1.5">
+              <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                <button
+                  type="button"
+                  onClick={onBackToHome}
+                  className="inline-flex items-center gap-1 font-semibold text-sky-700 hover:text-sky-600 dark:text-cyan-300 dark:hover:text-cyan-200"
+                >
+                  <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
+                  <span>返回星圖</span>
+                </button>
+                <span aria-hidden="true">/</span>
+                <span className="font-mono font-semibold text-amber-700 dark:text-amber-300">
+                  {sector.code}
+                </span>
+                <span aria-hidden="true">·</span>
+                <span>{sector.planetFlavor}</span>
+                <span aria-hidden="true">·</span>
+                <span>探索者：{profile.name}</span>
+              </div>
+
+              <h1 className="text-2xl font-extrabold text-slate-900 md:text-3xl dark:text-white">
+                {sector.title}
+              </h1>
+              <p className="text-sm text-slate-600 dark:text-slate-300">{sector.desc}</p>
+            </div>
+          </div>
+
+          {/* Right: Star Progress Bar + Mode Toggle */}
+          <div className="flex shrink-0 flex-col gap-3 lg:items-end">
+            <div className="w-full min-w-[230px] rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 dark:border-slate-800 dark:bg-[#080D1A]">
+              <div className="flex items-center justify-between text-xs font-bold">
+                <span className="inline-flex items-center gap-1.5 text-amber-700 dark:text-amber-300">
+                  <Star className="h-3.5 w-3.5 fill-current" aria-hidden="true" />
+                  <span>星球突破推進</span>
+                </span>
+                <span className="font-mono text-slate-900 tabular-nums dark:text-white">
+                  {starStats.earned} / {starStats.total} 顆星（{progressPct}%）
+                </span>
+              </div>
+              <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
+                <div
+                  className="h-full rounded-full transition-all duration-500"
+                  style={{
+                    width: `${progressPct}%`,
+                    backgroundColor: starStats.allDone ? '#10B981' : meta.color,
+                  }}
+                />
+              </div>
+            </div>
+
+            <div className="inline-flex self-start rounded-xl border border-slate-200 bg-slate-100 p-1 lg:self-end dark:border-slate-700 dark:bg-[#080D1A]">
+              <button
+                type="button"
+                onClick={() => onChangeMode('student')}
+                className={`whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-semibold ${
+                  mode === 'student'
+                    ? 'bg-sky-600 text-white dark:bg-cyan-500 dark:text-slate-950'
+                    : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'
+                }`}
+              >
+                學生練習
+              </button>
+              <button
+                type="button"
+                onClick={() => onChangeMode('projector')}
+                className={`whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-semibold ${
+                  mode === 'projector'
+                    ? 'bg-amber-500 text-white dark:bg-amber-400 dark:text-slate-950'
+                    : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'
+                }`}
+              >
+                教室投影
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Glowing Energy Quest Route Stepper */}
+      <div
+        role="tablist"
+        aria-label="星球闖關航線"
+        className="relative rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm dark:border-slate-800 dark:bg-[#0D1424]/95 dark:shadow-none"
+      >
+        {/* Horizontal Connecting Energy Beam (Desktop) */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute top-[44px] right-16 left-16 hidden h-1 rounded-full bg-slate-200 sm:block dark:bg-slate-800"
+        >
+          <div
+            className="h-full rounded-full bg-gradient-to-r from-emerald-400 via-cyan-400 to-amber-400 transition-all duration-500"
+            style={{
+              width: `${
+                activeTab === 'slides'
+                  ? 12
+                  : activeTab === 'warmup'
+                  ? 42
+                  : activeTab === 'micro'
+                  ? 72
+                  : 100
+              }%`,
+            }}
+          />
+        </div>
+
+        <div className="relative z-10 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {questNodes.map((node) => {
+            const Icon = node.icon;
+            const isActive = activeTab === node.id;
+            return (
+              <button
+                key={node.id}
+                role="tab"
+                aria-selected={isActive}
+                type="button"
+                onClick={() => onChangeTab(node.id)}
+                className={`group flex flex-col items-center gap-2 rounded-xl border p-3 text-center transition-all ${
+                  isActive
+                    ? 'border-sky-500 bg-sky-50/90 shadow-md dark:border-cyan-400 dark:bg-[#111D35] dark:shadow-none'
+                    : node.done
+                    ? 'border-emerald-300/80 bg-emerald-50/60 hover:border-emerald-400 dark:border-emerald-500/40 dark:bg-emerald-500/10'
+                    : 'border-slate-200 bg-slate-50/90 hover:border-slate-300 dark:border-slate-800 dark:bg-[#080D1A] dark:hover:border-slate-700'
+                }`}
+              >
+                <div
+                  className={`relative flex h-11 w-11 items-center justify-center rounded-full border-2 transition-transform group-hover:scale-105 ${
+                    isActive
+                      ? 'border-sky-500 bg-sky-600 text-white dark:border-cyan-300 dark:bg-cyan-500 dark:text-slate-950'
+                      : node.done
+                      ? 'border-emerald-400 bg-emerald-500 text-white dark:bg-emerald-400 dark:text-slate-950'
+                      : 'border-slate-300 bg-white text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300'
+                  }`}
+                >
+                  <Icon className="h-5 w-5" aria-hidden="true" />
+                  {node.done && (
+                    <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-amber-400 text-slate-950 shadow-sm">
+                      <CheckCircle2 className="h-3 w-3" aria-label="已完成" />
+                    </span>
+                  )}
+                </div>
+
+                <div>
+                  <div className="text-xs font-extrabold text-slate-900 dark:text-white">
+                    <span className="mr-1 font-mono text-sky-700 dark:text-cyan-300">{node.stepNum}</span>
+                    {node.label}
+                  </div>
+                  <div
+                    className={`mt-0.5 text-[11px] font-semibold ${
+                      node.done
+                        ? 'text-emerald-700 dark:text-emerald-300'
+                        : isActive
+                        ? 'text-sky-700 dark:text-cyan-300'
+                        : 'text-slate-500 dark:text-slate-400'
+                    }`}
+                  >
+                    {node.subLabel}
+                  </div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Active Module Viewport */}
+      <div>
+        {activeTab === 'slides' && (
+          <SlideDeckView
+            sector={sector}
+            isCompleted={secProgress.slides}
+            onComplete={() => onCompleteSlides(sector.id)}
+            onGoNextTab={() => onChangeTab('warmup')}
+          />
+        )}
+
+        {activeTab === 'warmup' && (
+          <WarmupChallengeView
+            sector={sector}
+            isCompleted={secProgress.warmup}
+            onComplete={() => onCompleteWarmup(sector.id)}
+            onGoNextTab={() => onChangeTab('micro')}
+            onFeedback={onFeedback}
+          />
+        )}
+
+        {activeTab === 'micro' && (
+          <MicroLevelStageView
+            sector={sector}
+            progress={secProgress}
+            mode={mode}
+            activeSubId={activeSubId}
+            onSelectSubId={onSelectSubId}
+            onAnswerSubQuiz={(subId, qIdx, optIdx, isCorrect) =>
+              onAnswerSubQuiz(sector.id, subId, qIdx, optIdx, isCorrect)
+            }
+            onResetSubQuiz={(subId) => onResetSubQuiz(sector.id, subId)}
+            onGoNextTab={() => onChangeTab('lab')}
+            onQuizOutcome={onFeedback}
+          />
+        )}
+
+        {activeTab === 'lab' && renderLab()}
+      </div>
+
+      {/* Prev / Next Sector Quick Bar */}
+      <div className="flex flex-wrap items-center justify-between gap-4 border-t border-slate-200 pt-5 text-sm dark:border-slate-800">
+        {prevSector ? (
+          <button
+            type="button"
+            onClick={() => onSelectSector(prevSector.id)}
+            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-slate-700 hover:border-sky-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-cyan-400"
+          >
+            <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+            <span>上一星球：{prevSector.shortTitle}</span>
+          </button>
+        ) : (
+          <div />
+        )}
+
+        {nextSector && (
+          <button
+            type="button"
+            onClick={() => onSelectSector(nextSector.id)}
+            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-slate-700 hover:border-sky-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-cyan-400"
+          >
+            <span>下一星球：{nextSector.shortTitle}</span>
+            <ChevronRight className="h-4 w-4" aria-hidden="true" />
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
