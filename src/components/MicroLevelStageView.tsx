@@ -13,7 +13,7 @@ import {
 import { SectorData, getSubLessonQuestions } from '../data/sectors';
 import { AppMode, SectorProgress, createEmptySubLevelProgress } from '../types';
 import { soundEngine } from '../utils/soundEngine';
-import { MathDiagram } from './MathDiagrams';
+import { QuestionMedia } from './QuestionMedia';
 import { SectorMiniExplorer } from './TeachInteractiveView';
 
 interface MicroLevelStageViewProps {
@@ -438,9 +438,9 @@ export function MicroLevelStageView({
                   {q.q}
                 </h3>
 
-                {q.diagramId && (
-                  <div className="mt-4 rounded-xl border border-slate-700 bg-slate-900 p-4 dark:border-slate-800 dark:bg-[#080D1A]">
-                    <MathDiagram id={q.diagramId} />
+                {(q.diagramId || q.imageUrl) && (
+                  <div className="mt-4">
+                    <QuestionMedia diagramId={q.diagramId} imageUrl={q.imageUrl} />
                   </div>
                 )}
               </div>
@@ -473,6 +473,7 @@ export function MicroLevelStageView({
                     <button
                       key={idx}
                       type="button"
+                      data-sfx="custom"
                       disabled={hasAnswered}
                       onClick={() => handleSelectOption(idx)}
                       className={`flex items-center gap-3 rounded-xl border px-4 py-3 text-left text-sm font-medium transition-colors ${styleClass}`}

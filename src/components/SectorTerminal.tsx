@@ -12,7 +12,7 @@ import {
   Star,
 } from 'lucide-react';
 import { SECTORS, SectorData, getSectorStarStats } from '../data/sectors';
-import { AppMode, ProfileRecord, SectorId, TerminalTab } from '../types';
+import { AppMode, ProfileRecord, SectorId, TerminalTab, isDarkTheme } from '../types';
 import { soundEngine } from '../utils/soundEngine';
 import { AudioToggleButtons } from './AudioToggleButtons';
 import { PLANET_META } from './PlanetHomeView';
@@ -58,7 +58,7 @@ interface SectorTerminalProps {
 function PlanetViewportWindow({ sectorId }: { sectorId: SectorId }) {
   const theme = useContext(ThemeContext);
   const meta = PLANET_META[sectorId];
-  const isDark = theme === 'dark';
+  const isDark = isDarkTheme(theme);
 
   return (
     <div

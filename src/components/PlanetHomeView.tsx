@@ -1,22 +1,46 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import {
   ArrowRight,
   BookMarked,
+  ChevronDown,
+  ChevronUp,
+  Compass,
+  Crosshair,
   Flag,
   LayoutGrid,
   Moon,
   Pause,
   Play,
+  RotateCcw,
   SlidersHorizontal,
   Star,
   Sun,
   Swords,
   Trophy,
-  User,
+  X,
 } from 'lucide-react';
 import { SECTORS, getSectorStarStats, getTotalSystemStars } from '../data/sectors';
-import { AppMode, ProfileRecord, SectorId, ThemeMode } from '../types';
+import {
+  AppMode,
+  ProfileRecord,
+  SectorId,
+  THEME_META,
+  ThemeMode,
+  getNextThemeMode,
+  isDarkTheme,
+} from '../types';
 import { soundEngine } from '../utils/soundEngine';
+import {
+  SOLAR_PLANET_CONFIGS,
+  buildOrbitalBeaconGroup,
+  buildStarCruiserGroup,
+  createGlowSpriteTexture,
+  createPlanetSurfaceTexture,
+  detectSoftwareWebGL,
+} from '../utils/spaceDiorama3D';
 import { AchievementWallBar } from './AchievementWallBar';
 import { AudioToggleButtons } from './AudioToggleButtons';
 
@@ -69,6 +93,7 @@ export const PLANET_META: Record<SectorId, PlanetOrbitMeta> = {
     bandColor: '#EDE9FE',
     landFill: '#C084FC',
     shoreFill: '#FDE68A',
+    hasMoon: true,
   },
   s2: {
     id: 's2',
@@ -85,7 +110,6 @@ export const PLANET_META: Record<SectorId, PlanetOrbitMeta> = {
     bandColor: '#FCE7F3',
     landFill: '#F472B6',
     shoreFill: '#FEF08A',
-    hasMoon: true,
   },
   s3: {
     id: 's3',
@@ -102,6 +126,7 @@ export const PLANET_META: Record<SectorId, PlanetOrbitMeta> = {
     bandColor: '#FEF3C7',
     landFill: '#FBBF24',
     shoreFill: '#FEF9C3',
+    hasMoon: true,
   },
   s4: {
     id: 's4',
@@ -153,6 +178,7 @@ export const PLANET_META: Record<SectorId, PlanetOrbitMeta> = {
     landFill: '#34D399',
     shoreFill: '#ECFDF5',
     hasRing: true,
+    hasMoon: true,
   },
   s7: {
     id: 's7',
@@ -190,35 +216,41 @@ export const PLANET_META: Record<SectorId, PlanetOrbitMeta> = {
   },
 };
 
-function projectSphere(lonDeg: number, latDeg: number, rotLon: number, rotLat: number, radius: number) {
-  const toRad = Math.PI / 180;
-  const lambda = (lonDeg - rotLon) * toRad;
-  const phi = latDeg * toRad;
-  const phi0 = rotLat * toRad;
+const PLANET_SUBTITLE_MAP: Record<SectorId, string> = {
+  s1: '雙峰奇偶翡翠星',
+  s2: '燈塔規律粉晶星',
+  s3: '離子面積琥珀星',
+  s4: '光環賽博計數星',
+  s5: '跨河峽谷橘焰星',
+  s6: '翡翠環繞生態星',
+  s7: '冰晶陣列深藍星',
+  s8: '航太雙塔靛藍星',
+};
 
-  const cosPhi = Math.cos(phi);
-  const sinPhi = Math.sin(phi);
-  const cosPhi0 = Math.cos(phi0);
-  const sinPhi0 = Math.sin(phi0);
-  const cosLam = Math.cos(lambda);
-  const sinLam = Math.sin(lambda);
+// Reusable module-scope math objects (zero per-frame heap allocations)
+const _vec3A = new THREE.Vector3();
+const _vec3B = new THREE.Vector3();
+const _vec3C = new THREE.Vector3();
+const _overviewCamPos = new THREE.Vector3(0, 19.5, 35.5);
+const _overviewTarget = new THREE.Vector3(0, 0, 0);
 
-  const z = sinPhi0 * sinPhi + cosPhi0 * cosPhi * cosLam;
-  const x = cosPhi * sinLam * radius;
-  const y = -(cosPhi0 * sinPhi - sinPhi0 * cosPhi * cosLam) * radius;
-
-  return { x, y, z };
+interface PlanetRuntime {
+  id: SectorId;
+  orbitPivot: THREE.Group;
+  planetAnchor: THREE.Group;
+  sphereMesh: THREE.Mesh;
+  atmosphereMat: THREE.MeshBasicMaterial;
+  orbitRingMat: THREE.MeshBasicMaterial;
+  targetRing: THREE.Mesh;
+  targetRingMat: THREE.MeshBasicMaterial;
+  moonPivot: THREE.Group | null;
+  beaconPivot: THREE.Group | null;
+  hitProxy: THREE.Mesh;
+  orbitalAngle: number;
+  orbitSpeed: number;
+  spinSpeed: number;
+  planetRadius: number;
 }
-
-const ASTEROID_BELT = Array.from({ length: 36 }, (_, i) => {
-  const angle = (i * 10 * Math.PI) / 180;
-  const radius = 202 + ((i * 7) % 9) - 4;
-  return {
-    x: 340 + radius * Math.cos(angle),
-    y: 340 + radius * Math.sin(angle),
-    r: (i % 3) * 0.7 + 0.9,
-  };
-});
 
 export function PlanetHomeView({
   profile,
@@ -233,1110 +265,1318 @@ export function PlanetHomeView({
   onOpenProgressModal,
   onOpenWrongModal,
 }: PlanetHomeViewProps) {
-  const [rotLon, setRotLon] = useState(-10);
-  const [rotLat, setRotLat] = useState(8);
+  const [focusedSector, setFocusedSector] = useState<SectorId | null>(null);
   const [hoveredSector, setHoveredSector] = useState<SectorId | null>(null);
-  const [isMotionPaused, setIsMotionPaused] = useState(false);
+  const [orbitPaused, setOrbitPaused] = useState(false);
+  const [dockOpen, setDockOpen] = useState(true);
 
-  const dragRef = useRef<{ active: boolean; x: number; y: number; moved: boolean }>({
-    active: false,
-    x: 0,
-    y: 0,
-    moved: false,
-  });
+  const canvasMountRef = useRef<HTMLDivElement | null>(null);
+  const labelRefs = useRef<Partial<Record<SectorId, HTMLButtonElement | null>>>({});
 
-  const isDark = theme === 'dark';
-  const totalSystemStars = useMemo(() => getTotalSystemStars(SECTORS), []);
+  // Latest UI state synced into mutable refs so the Three.js scene runs uninterrupted
+  const focusedRef = useRef<SectorId | null>(focusedSector);
+  const hoveredRef = useRef<SectorId | null>(hoveredSector);
+  const themeRef = useRef<ThemeMode>(theme);
+  const orbitPausedRef = useRef<boolean>(orbitPaused);
+  const onSelectSectorRef = useRef(onSelectSector);
 
-  const stats = useMemo(() => {
-    let stars = 0;
-    let flags = 0;
+  focusedRef.current = focusedSector;
+  hoveredRef.current = hoveredSector;
+  themeRef.current = theme;
+  orbitPausedRef.current = orbitPaused;
+  onSelectSectorRef.current = onSelectSector;
+
+  // Controls smooth fly-to transitions vs free manual OrbitControls
+  const cameraGoalRef = useRef<'overview' | 'planet'>('overview');
+  const isAutoGlidingRef = useRef<boolean>(false);
+  const liveThemeSyncRef = useRef<((t: ThemeMode) => void) | null>(null);
+
+  const isDark = isDarkTheme(theme);
+  const themeMeta = THEME_META[theme];
+
+  const { totalEarnedStars, totalSystemStars, completedPlanets, nextRecommendedSector } = useMemo(() => {
+    let earned = 0;
+    let planetsDone = 0;
+    let recommended: SectorId = 's1';
+    let foundNext = false;
+
     SECTORS.forEach((sec) => {
-      const s = getSectorStarStats(sec, profile.sectors[sec.id]);
-      stars += s.earned;
-      if (s.allDone) flags += 1;
+      const stats = getSectorStarStats(sec, profile.sectors[sec.id]);
+      earned += stats.earned;
+      if (stats.earned === stats.total) {
+        planetsDone += 1;
+      } else if (!foundNext) {
+        recommended = sec.id;
+        foundNext = true;
+      }
     });
-    return { stars, flags };
+
+    return {
+      totalEarnedStars: earned,
+      totalSystemStars: getTotalSystemStars(SECTORS),
+      completedPlanets: planetsDone,
+      nextRecommendedSector: recommended,
+    };
   }, [profile]);
 
-  const effectivePaused = isMotionPaused || hoveredSector !== null;
+  const focusedSectorDef = useMemo(
+    () => (focusedSector ? SECTORS.find((s) => s.id === focusedSector) ?? null : null),
+    [focusedSector]
+  );
 
-  // Smooth auto-spin on Bright Planet when not paused, hovered, or dragged
+  const focusedSectorStats = useMemo(
+    () =>
+      focusedSectorDef
+        ? getSectorStarStats(focusedSectorDef, profile.sectors[focusedSectorDef.id])
+        : null,
+    [focusedSectorDef, profile.sectors]
+  );
+
+  // Trigger live theme update inside the 3D WebGL scene without tearing down canvas
   useEffect(() => {
-    if (isDark || effectivePaused) return;
-    if (typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+    liveThemeSyncRef.current?.(theme);
+  }, [theme]);
+
+  // Trigger smooth camera fly-to whenever focusedSector changes
+  useEffect(() => {
+    if (focusedSector) {
+      cameraGoalRef.current = 'planet';
+      isAutoGlidingRef.current = true;
+    } else {
+      cameraGoalRef.current = 'overview';
+      isAutoGlidingRef.current = true;
+    }
+  }, [focusedSector]);
+
+  // Keyboard shortcuts: Escape returns to solar overview, H collapses/expands dock
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement | null)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+
+      if (e.key === 'Escape' && focusedRef.current) {
+        soundEngine.playClick();
+        setFocusedSector(null);
+      } else if ((e.key === 'h' || e.key === 'H') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        setDockOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
+
+  // Main Three.js WebGL Multi-Planet Interstellar Scene
+  useEffect(() => {
+    const container = canvasMountRef.current;
+    if (!container) return;
+
+    const isSoftwareGl = detectSoftwareWebGL();
+    const width = Math.max(container.clientWidth, 320);
+    const height = Math.max(container.clientHeight, 320);
+
+    // 1. Renderer
+    const renderer = new THREE.WebGLRenderer({
+      antialias: !isSoftwareGl,
+      powerPreference: 'high-performance',
+      alpha: false,
+    });
+    renderer.setPixelRatio(isSoftwareGl ? 1 : Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(width, height);
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.08;
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.domElement.style.width = '100%';
+    renderer.domElement.style.height = '100%';
+    renderer.domElement.style.display = 'block';
+    renderer.domElement.style.touchAction = 'none';
+    container.appendChild(renderer.domElement);
+
+    // 2. Scene + Environment IBL
+    const scene = new THREE.Scene();
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    const envRT = pmrem.fromScene(new RoomEnvironment(), 0.04);
+    scene.environment = envRT.texture;
+    scene.environmentIntensity = 0.65;
+    pmrem.dispose();
+
+    const spaceBgColor = new THREE.Color('#030816');
+    const brightBgColor = new THREE.Color('#0E4A7E');
+    const initialDark = isDarkTheme(themeRef.current);
+    scene.background = (initialDark ? spaceBgColor : brightBgColor).clone();
+    const fog = new THREE.FogExp2(
+      initialDark ? 0x030816 : 0x0e4a7d,
+      initialDark ? 0.0085 : 0.0062
+    );
+    scene.fog = fog;
+
+    // 3. Camera & OrbitControls
+    const camera = new THREE.PerspectiveCamera(46, width / height, 0.25, 220);
+    camera.position.copy(_overviewCamPos);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = !isSoftwareGl;
+    controls.dampingFactor = 0.065;
+    controls.minDistance = 4.2;
+    controls.maxDistance = 68;
+    controls.maxPolarAngle = Math.PI * 0.84;
+    controls.minPolarAngle = 0.14;
+    controls.rotateSpeed = 0.72;
+    controls.zoomSpeed = 0.88;
+    controls.target.copy(_overviewTarget);
+
+    // Cancel automated camera glide if user grabs/scrolls controls
+    const handleControlsStart = () => {
+      isAutoGlidingRef.current = false;
+    };
+    controls.addEventListener('start', handleControlsStart);
+
+    // 4. Lighting
+    const sunPointLight = new THREE.PointLight(0xfff0cc, 105, 130, 1.25);
+    sunPointLight.position.set(0, 0, 0);
+    scene.add(sunPointLight);
+
+    const hemiLight = new THREE.HemisphereLight(
+      initialDark ? 0x38bdf8 : 0xbae6fd,
+      initialDark ? 0x0f172a : 0x1e3a8a,
+      initialDark ? 0.72 : 1.2
+    );
+    scene.add(hemiLight);
+
+    const rimDirLight = new THREE.DirectionalLight(0x7dd3fc, 0.85);
+    rimDirLight.position.set(-18, 22, -16);
+    scene.add(rimDirLight);
+
+    // Resource tracking for clean disposal
+    const disposableGeos: THREE.BufferGeometry[] = [];
+    const disposableMats: THREE.Material[] = [];
+    const disposableTexs: THREE.Texture[] = [];
+
+    const trackGeo = <T extends THREE.BufferGeometry>(g: T) => {
+      disposableGeos.push(g);
+      return g;
+    };
+    const trackMat = <T extends THREE.Material>(m: T) => {
+      disposableMats.push(m);
+      return m;
+    };
+    const trackTex = <T extends THREE.Texture>(t: T) => {
+      disposableTexs.push(t);
+      return t;
+    };
+
+    // 5. Central Sun Group
+    const sunGroup = new THREE.Group();
+    scene.add(sunGroup);
+
+    const sunGeo = trackGeo(new THREE.SphereGeometry(2.55, 36, 28));
+    const sunMat = trackMat(
+      new THREE.MeshStandardMaterial({
+        color: 0xfde047,
+        emissive: 0xff8c00,
+        emissiveIntensity: 1.9,
+        roughness: 0.35,
+      })
+    );
+    const sunMesh = new THREE.Mesh(sunGeo, sunMat);
+    sunGroup.add(sunMesh);
+
+    const innerCoronaTex = trackTex(
+      createGlowSpriteTexture('rgba(255, 250, 210, 0.95)', 'rgba(251, 191, 36, 0.55)')
+    );
+    const innerCoronaMat = trackMat(
+      new THREE.SpriteMaterial({
+        map: innerCoronaTex,
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      })
+    );
+    const innerCorona = new THREE.Sprite(innerCoronaMat);
+    innerCorona.scale.set(9.8, 9.8, 1);
+    sunGroup.add(innerCorona);
+
+    const outerCoronaTex = trackTex(
+      createGlowSpriteTexture('rgba(251, 146, 60, 0.45)', 'rgba(56, 189, 248, 0.14)')
+    );
+    const outerCoronaMat = trackMat(
+      new THREE.SpriteMaterial({
+        map: outerCoronaTex,
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      })
+    );
+    const outerCorona = new THREE.Sprite(outerCoronaMat);
+    outerCorona.scale.set(16.5, 16.5, 1);
+    sunGroup.add(outerCorona);
+
+    const solarRingGeo = trackGeo(new THREE.TorusGeometry(3.35, 0.032, 8, 64));
+    const solarRingMat = trackMat(
+      new THREE.MeshBasicMaterial({
+        color: 0xfde047,
+        transparent: true,
+        opacity: 0.42,
+      })
+    );
+    const solarRingA = new THREE.Mesh(solarRingGeo, solarRingMat);
+    solarRingA.rotation.x = Math.PI / 2.3;
+    sunGroup.add(solarRingA);
+
+    const solarRingB = new THREE.Mesh(solarRingGeo, solarRingMat);
+    solarRingB.rotation.x = -Math.PI / 2.6;
+    solarRingB.rotation.z = 0.55;
+    sunGroup.add(solarRingB);
+
+    // 6. 3D Starfield (1,400 multi-tint stars)
+    const starCount = isSoftwareGl ? 750 : 1400;
+    const starPositions = new Float32Array(starCount * 3);
+    const starColors = new Float32Array(starCount * 3);
+    const palette = [
+      new THREE.Color('#FFFFFF'),
+      new THREE.Color('#BAE6FD'),
+      new THREE.Color('#FDE68A'),
+      new THREE.Color('#C4B5FD'),
+    ];
+    for (let i = 0; i < starCount; i++) {
+      const r = 46 + ((i * 73) % 44);
+      const theta = ((i * 1.6180339) % 1) * Math.PI * 2;
+      const phi = Math.acos(1 - 2 * (((i * 0.7548776) % 1)));
+      starPositions[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+      starPositions[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
+      starPositions[i * 3 + 2] = r * Math.cos(phi);
+
+      const c = palette[i % palette.length];
+      starColors[i * 3] = c.r;
+      starColors[i * 3 + 1] = c.g;
+      starColors[i * 3 + 2] = c.b;
+    }
+    const starGeo = trackGeo(new THREE.BufferGeometry());
+    starGeo.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
+    starGeo.setAttribute('color', new THREE.BufferAttribute(starColors, 3));
+    const starMat = trackMat(
+      new THREE.PointsMaterial({
+        size: 0.34,
+        vertexColors: true,
+        transparent: true,
+        opacity: initialDark ? 0.92 : 0.62,
+        sizeAttenuation: true,
+      })
+    );
+    const starField = new THREE.Points(starGeo, starMat);
+    scene.add(starField);
+
+    // 7. Instanced Asteroid Belt between s4 (r=14.5) and s5 (r=17.6)
+    const asteroidCount = isSoftwareGl ? 90 : 175;
+    const asteroidGeo = trackGeo(new THREE.IcosahedronGeometry(0.15, 0));
+    const asteroidMat = trackMat(
+      new THREE.MeshStandardMaterial({
+        color: 0x94a3b8,
+        roughness: 0.78,
+        metalness: 0.25,
+      })
+    );
+    const asteroidBelt = new THREE.InstancedMesh(asteroidGeo, asteroidMat, asteroidCount);
+    const dummyObj = new THREE.Object3D();
+    for (let i = 0; i < asteroidCount; i++) {
+      const angle = (i / asteroidCount) * Math.PI * 2 + (i % 7) * 0.04;
+      const rad = 15.65 + ((i * 37) % 100) * 0.0095;
+      const y = (((i * 19) % 100) / 100 - 0.5) * 0.72;
+      dummyObj.position.set(Math.cos(angle) * rad, y, Math.sin(angle) * rad);
+      dummyObj.rotation.set(i * 0.4, i * 0.7, i * 0.2);
+      const scale = 0.55 + ((i * 13) % 10) * 0.11;
+      dummyObj.scale.setScalar(scale);
+      dummyObj.updateMatrix();
+      asteroidBelt.setMatrixAt(i, dummyObj.matrix);
+    }
+    asteroidBelt.instanceMatrix.needsUpdate = true;
+    asteroidBelt.computeBoundingSphere();
+    scene.add(asteroidBelt);
+
+    // 8. Shooting Comets
+    const cometGlowTex = trackTex(
+      createGlowSpriteTexture('rgba(224, 242, 254, 0.95)', 'rgba(56, 189, 248, 0.35)')
+    );
+    const createComet = (colorHex: number) => {
+      const comet = new THREE.Group();
+      const head = new THREE.Mesh(
+        trackGeo(new THREE.SphereGeometry(0.18, 12, 10)),
+        trackMat(new THREE.MeshBasicMaterial({ color: 0xffffff }))
+      );
+      comet.add(head);
+
+      const sprite = new THREE.Sprite(
+        trackMat(
+          new THREE.SpriteMaterial({
+            map: cometGlowTex,
+            color: colorHex,
+            transparent: true,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+          })
+        )
+      );
+      sprite.scale.set(1.25, 1.25, 1);
+      comet.add(sprite);
+
+      const tailGeo = trackGeo(new THREE.ConeGeometry(0.16, 2.6, 10));
+      tailGeo.rotateX(-Math.PI / 2);
+      tailGeo.translate(0, 0, -1.35);
+      const tail = new THREE.Mesh(
+        tailGeo,
+        trackMat(
+          new THREE.MeshBasicMaterial({
+            color: colorHex,
+            transparent: true,
+            opacity: 0.42,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+          })
+        )
+      );
+      comet.add(tail);
+      scene.add(comet);
+      return comet;
+    };
+    const cometA = createComet(0x38bdf8);
+    const cometB = createComet(0xfde047);
+
+    // 9. Eight Composite 3D Planets
+    const maxAniso = renderer.capabilities.getMaxAnisotropy();
+    const planetRuntimes: Record<SectorId, PlanetRuntime> = {} as Record<SectorId, PlanetRuntime>;
+    const raycastTargets: THREE.Object3D[] = [];
+
+    const sphereSegW = isSoftwareGl ? 28 : 48;
+    const sphereSegH = isSoftwareGl ? 20 : 32;
+
+    SECTORS.forEach((sec) => {
+      const cfg = SOLAR_PLANET_CONFIGS[sec.id];
+
+      // Tilted Orbit Plane
+      const orbitPlane = new THREE.Group();
+      orbitPlane.rotation.x = cfg.orbitTiltX;
+      orbitPlane.rotation.z = cfg.orbitTiltZ;
+      scene.add(orbitPlane);
+
+      // Orbit Track Torus Ring
+      const orbitRingGeo = trackGeo(new THREE.TorusGeometry(cfg.orbitRadius, 0.022, 8, 128));
+      orbitRingGeo.rotateX(Math.PI / 2);
+      const orbitRingMat = trackMat(
+        new THREE.MeshBasicMaterial({
+          color: cfg.glowHex,
+          transparent: true,
+          opacity: 0.24,
+        })
+      );
+      const orbitRing = new THREE.Mesh(orbitRingGeo, orbitRingMat);
+      orbitPlane.add(orbitRing);
+
+      // Rotating Orbit Pivot
+      const orbitPivot = new THREE.Group();
+      orbitPivot.rotation.y = cfg.startAngle;
+      orbitPlane.add(orbitPivot);
+
+      // Planet Anchor positioned at orbital radius
+      const planetAnchor = new THREE.Group();
+      planetAnchor.position.set(cfg.orbitRadius, 0, 0);
+      orbitPivot.add(planetAnchor);
+
+      // Axial Tilt Holder
+      const tiltGroup = new THREE.Group();
+      tiltGroup.rotation.z = cfg.axialTilt;
+      planetAnchor.add(tiltGroup);
+
+      // Core 3D Sphere with seamless procedural CanvasTexture
+      const surfaceTex = trackTex(createPlanetSurfaceTexture(cfg, maxAniso));
+      const sphereGeo = trackGeo(new THREE.SphereGeometry(cfg.planetRadius, sphereSegW, sphereSegH));
+      const sphereMat = trackMat(
+        new THREE.MeshStandardMaterial({
+          map: surfaceTex,
+          roughness: 0.62,
+          metalness: 0.14,
+          emissive: new THREE.Color(cfg.baseHex),
+          emissiveIntensity: 0.12,
+        })
+      );
+      const sphereMesh = new THREE.Mesh(sphereGeo, sphereMat);
+      tiltGroup.add(sphereMesh);
+
+      // Translucent Atmospheric Rim Shell
+      const atmoGeo = trackGeo(new THREE.SphereGeometry(cfg.planetRadius * 1.075, 24, 18));
+      const atmosphereMat = trackMat(
+        new THREE.MeshBasicMaterial({
+          color: cfg.glowHex,
+          transparent: true,
+          opacity: 0.18,
+          blending: THREE.AdditiveBlending,
+          depthWrite: false,
+          side: THREE.BackSide,
+        })
+      );
+      const atmosphereMesh = new THREE.Mesh(atmoGeo, atmosphereMat);
+      tiltGroup.add(atmosphereMesh);
+
+      // Optional Planetary Rings
+      if (cfg.hasRing) {
+        const innerR = cfg.planetRadius * 1.38;
+        const outerR = cfg.planetRadius * 2.02;
+        const discGeo = trackGeo(new THREE.RingGeometry(innerR, outerR, 48));
+        discGeo.rotateX(Math.PI / 2);
+        const discMat = trackMat(
+          new THREE.MeshBasicMaterial({
+            color: cfg.ringColor ?? cfg.glowHex,
+            transparent: true,
+            opacity: 0.45,
+            side: THREE.DoubleSide,
+            depthWrite: false,
+          })
+        );
+        const disc = new THREE.Mesh(discGeo, discMat);
+        tiltGroup.add(disc);
+
+        const edgeGeo = trackGeo(new THREE.TorusGeometry(outerR, 0.025, 8, 64));
+        edgeGeo.rotateX(Math.PI / 2);
+        const edgeMat = trackMat(
+          new THREE.MeshBasicMaterial({
+            color: 0xffffff,
+            transparent: true,
+            opacity: 0.52,
+          })
+        );
+        tiltGroup.add(new THREE.Mesh(edgeGeo, edgeMat));
+      }
+
+      // Target Lock Reticle Ring (brightens when hovered or focused)
+      const targetGeo = trackGeo(new THREE.TorusGeometry(cfg.planetRadius * 1.54, 0.036, 8, 48));
+      targetGeo.rotateX(Math.PI / 2);
+      const targetRingMat = trackMat(
+        new THREE.MeshBasicMaterial({
+          color: cfg.glowHex,
+          transparent: true,
+          opacity: 0.0,
+        })
+      );
+      const targetRing = new THREE.Mesh(targetGeo, targetRingMat);
+      planetAnchor.add(targetRing);
+
+      // Optional Orbiting Moon
+      let moonPivot: THREE.Group | null = null;
+      if (cfg.hasMoon) {
+        moonPivot = new THREE.Group();
+        moonPivot.rotation.z = 0.24;
+        planetAnchor.add(moonPivot);
+        const moonMesh = new THREE.Mesh(
+          trackGeo(new THREE.SphereGeometry(cfg.planetRadius * 0.23, 14, 12)),
+          trackMat(
+            new THREE.MeshStandardMaterial({
+              color: 0xe2e8f0,
+              roughness: 0.78,
+              metalness: 0.08,
+            })
+          )
+        );
+        moonMesh.position.set(cfg.planetRadius * 1.92, 0, 0);
+        moonPivot.add(moonMesh);
+      }
+
+      // Optional 5-Part Orbiting Space Station / Beacon
+      let beaconPivot: THREE.Group | null = null;
+      if (cfg.hasBeacon || cfg.hasRing) {
+        beaconPivot = new THREE.Group();
+        beaconPivot.rotation.z = -0.32;
+        planetAnchor.add(beaconPivot);
+        const beacon = buildOrbitalBeaconGroup(cfg.glowHex);
+        beacon.scale.setScalar(0.56);
+        beacon.position.set(-cfg.planetRadius * 1.65, cfg.planetRadius * 0.48, 0);
+        beaconPivot.add(beacon);
+        beacon.traverse((obj) => {
+          if (obj instanceof THREE.Mesh) {
+            trackGeo(obj.geometry);
+            if (Array.isArray(obj.material)) obj.material.forEach(trackMat);
+            else trackMat(obj.material);
+          }
+        });
+      }
+
+      // Invisible Layer-1 Proxy Sphere for crisp effortless raycasting
+      const proxyMat = trackMat(
+        new THREE.MeshBasicMaterial({
+          transparent: true,
+          opacity: 0,
+          depthWrite: false,
+          colorWrite: false,
+        })
+      );
+      const hitProxy = new THREE.Mesh(
+        trackGeo(new THREE.SphereGeometry(cfg.planetRadius * 1.62, 12, 12)),
+        proxyMat
+      );
+      hitProxy.layers.set(1);
+      hitProxy.userData.sectorId = cfg.id;
+      planetAnchor.add(hitProxy);
+      raycastTargets.push(hitProxy);
+
+      planetRuntimes[sec.id] = {
+        id: sec.id,
+        orbitPivot,
+        planetAnchor,
+        sphereMesh,
+        atmosphereMat,
+        orbitRingMat,
+        targetRing,
+        targetRingMat,
+        moonPivot,
+        beaconPivot,
+        hitProxy,
+        orbitalAngle: cfg.startAngle,
+        orbitSpeed: cfg.orbitSpeed,
+        spinSpeed: cfg.spinSpeed,
+        planetRadius: cfg.planetRadius,
+      };
+    });
+
+    // 10. Animated 7-Part Star-Cruiser Spaceship patrolling the Star System
+    const { group: cruiserGroup, thrusterLeft, thrusterRight } = buildStarCruiserGroup();
+    cruiserGroup.scale.setScalar(0.92);
+    scene.add(cruiserGroup);
+    cruiserGroup.traverse((obj) => {
+      if (obj instanceof THREE.Mesh) {
+        trackGeo(obj.geometry);
+        if (Array.isArray(obj.material)) obj.material.forEach(trackMat);
+        else trackMat(obj.material);
+      }
+    });
+
+    const patrolCurve = new THREE.CatmullRomCurve3(
+      [
+        new THREE.Vector3(10, 3.2, 10),
+        new THREE.Vector3(-4, 5.4, 15.5),
+        new THREE.Vector3(-19, 2.2, 6),
+        new THREE.Vector3(-12, -1.8, -14),
+        new THREE.Vector3(6, 4.2, -20),
+        new THREE.Vector3(21, 1.8, -6),
+        new THREE.Vector3(16, -1.2, 12),
+      ],
+      true
+    );
+    let cruiserT = 0;
+
+    // Live theme updater callback (updates background, fog, stars, hemiLight seamlessly)
+    liveThemeSyncRef.current = (nextTheme: ThemeMode) => {
+      const dark = isDarkTheme(nextTheme);
+      scene.background = (dark ? spaceBgColor : brightBgColor).clone();
+      fog.color.copy(dark ? spaceBgColor : brightBgColor);
+      fog.density = dark ? 0.0085 : 0.0062;
+      starMat.opacity = dark ? 0.92 : 0.62;
+      hemiLight.intensity = dark ? 0.72 : 1.2;
+    };
+
+    // Pre-compile shaders on hardware GPU
+    if (!isSoftwareGl) {
+      renderer.compile(scene, camera);
+    }
+
+    // 11. Raycaster Interaction (Throttled Hover + Drag-Safe Click)
+    const raycaster = new THREE.Raycaster();
+    raycaster.layers.set(1);
+    const ndcPointer = new THREE.Vector2();
+    let lastHoverCheck = 0;
+    let pointerDownPos = { x: 0, y: 0 };
+
+    const updatePointerNdc = (clientX: number, clientY: number) => {
+      const rect = renderer.domElement.getBoundingClientRect();
+      ndcPointer.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+      ndcPointer.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+      return rect;
+    };
+
+    const pickSectorAt = (clientX: number, clientY: number): SectorId | null => {
+      updatePointerNdc(clientX, clientY);
+      raycaster.setFromCamera(ndcPointer, camera);
+      const hits = raycaster.intersectObjects(raycastTargets, false);
+      if (hits.length > 0) {
+        return (hits[0].object.userData.sectorId as SectorId | undefined) ?? null;
+      }
+      return null;
+    };
+
+    const handlePointerMove = (e: PointerEvent) => {
+      const now = performance.now();
+      if (now - lastHoverCheck < 32) return;
+      lastHoverCheck = now;
+
+      const hitId = pickSectorAt(e.clientX, e.clientY);
+      renderer.domElement.style.cursor = hitId ? 'pointer' : 'grab';
+      if (hoveredRef.current !== hitId) {
+        setHoveredSector(hitId);
+      }
+    };
+
+    const handlePointerDown = (e: PointerEvent) => {
+      pointerDownPos = { x: e.clientX, y: e.clientY };
+      if (!hoveredRef.current) {
+        renderer.domElement.style.cursor = 'grabbing';
+      }
+    };
+
+    const handlePointerUp = (e: PointerEvent) => {
+      const dx = e.clientX - pointerDownPos.x;
+      const dy = e.clientY - pointerDownPos.y;
+      renderer.domElement.style.cursor = hoveredRef.current ? 'pointer' : 'grab';
+      if (Math.hypot(dx, dy) > 6) return; // Dragged to orbit; don't trigger click
+
+      const hitId = pickSectorAt(e.clientX, e.clientY);
+      if (hitId) {
+        if (focusedRef.current === hitId) {
+          soundEngine.playWarp();
+          onSelectSectorRef.current(hitId);
+        } else {
+          soundEngine.playHoverLock();
+          setFocusedSector(hitId);
+        }
+      } else if (focusedRef.current) {
+        soundEngine.playClick();
+        setFocusedSector(null);
+      }
+    };
+
+    const handlePointerLeave = () => {
+      if (hoveredRef.current !== null) {
+        setHoveredSector(null);
+      }
+    };
+
+    renderer.domElement.addEventListener('pointermove', handlePointerMove);
+    renderer.domElement.addEventListener('pointerdown', handlePointerDown);
+    renderer.domElement.addEventListener('pointerup', handlePointerUp);
+    renderer.domElement.addEventListener('pointerleave', handlePointerLeave);
+
+    // 12. ResizeObserver
+    const resizeObserver = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (!entry) return;
+      const w = Math.max(entry.contentRect.width, 320);
+      const h = Math.max(entry.contentRect.height, 320);
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+      renderer.setSize(w, h);
+    });
+    resizeObserver.observe(container);
+
+    // 13. Render Loop (afterDraw pacing on Software WebGL, rAF on Hardware GPU)
+    let disposed = false;
+    let rafId = 0;
+    let swTimerId: number | null = null;
+    let prevTime = performance.now();
+
+    const glCtx = isSoftwareGl ? renderer.getContext() : null;
+    const afterDraw = (fn: () => void) => {
+      if (disposed) return;
+      if (glCtx && glCtx instanceof WebGL2RenderingContext) {
+        const sync = glCtx.fenceSync(glCtx.SYNC_GPU_COMMANDS_COMPLETE, 0);
+        if (sync) {
+          glCtx.flush();
+          const poll = () => {
+            if (disposed) {
+              glCtx.deleteSync(sync);
+              return;
+            }
+            const status = glCtx.clientWaitSync(sync, 0, 0);
+            if (status === glCtx.WAIT_FAILED || status === glCtx.CONDITION_SATISFIED || status === glCtx.ALREADY_SIGNALED) {
+              glCtx.deleteSync(sync);
+              swTimerId = window.setTimeout(fn, 65);
+            } else {
+              swTimerId = window.setTimeout(poll, 16);
+            }
+          };
+          swTimerId = window.setTimeout(poll, 16);
+          return;
+        }
+      }
+      swTimerId = window.setTimeout(fn, 80);
+    };
+
+    const tick = () => {
+      if (disposed) return;
+
+      const now = performance.now();
+      const delta = Math.min((now - prevTime) / 1000, 0.08);
+      prevTime = now;
+      const elapsed = now * 0.001;
+
+      const curFocused = focusedRef.current;
+      const curHovered = hoveredRef.current;
+      const pausedAll = orbitPausedRef.current;
+
+      // Central Sun animation
+      sunMesh.rotation.y += delta * 0.14;
+      solarRingA.rotation.z += delta * 0.22;
+      solarRingB.rotation.z -= delta * 0.18;
+      const sunPulse = 1 + Math.sin(elapsed * 2.1) * 0.045;
+      innerCorona.scale.set(9.8 * sunPulse, 9.8 * sunPulse, 1);
+
+      // Distant starfield & asteroid belt drift
+      starField.rotation.y += delta * 0.008;
+      if (!pausedAll) {
+        asteroidBelt.rotation.y += delta * 0.032;
+      }
+
+      // Comets flying elliptical paths across deep space
+      const cometAngleA = elapsed * 0.34;
+      cometA.position.set(
+        Math.cos(cometAngleA) * 31,
+        Math.sin(cometAngleA * 1.4) * 9 + 4,
+        Math.sin(cometAngleA) * 26
+      );
+      _vec3A.set(
+        Math.cos(cometAngleA + 0.04) * 31,
+        Math.sin((cometAngleA + 0.04) * 1.4) * 9 + 4,
+        Math.sin(cometAngleA + 0.04) * 26
+      );
+      cometA.lookAt(_vec3A);
+
+      const cometAngleB = -elapsed * 0.26 + 2.4;
+      cometB.position.set(
+        Math.cos(cometAngleB) * 35,
+        Math.cos(cometAngleB * 1.2) * 8 - 3,
+        Math.sin(cometAngleB) * 29
+      );
+      _vec3A.set(
+        Math.cos(cometAngleB - 0.04) * 35,
+        Math.cos((cometAngleB - 0.04) * 1.2) * 8 - 3,
+        Math.sin(cometAngleB - 0.04) * 29
+      );
+      cometB.lookAt(_vec3A);
+
+      // Update 8 3D Planets
+      SECTORS.forEach((sec) => {
+        const pr = planetRuntimes[sec.id];
+        const isFocus = curFocused === sec.id;
+        const isHover = curHovered === sec.id;
+
+        // Genuine 3D Y-axis sphere spin NEVER stops so spheres always show full 3D depth!
+        pr.sphereMesh.rotation.y += pr.spinSpeed * (isFocus ? 0.72 : 1) * delta;
+
+        // Pause orbital revolution for that planet if paused globally OR hovered/focused for crisp UX
+        if (!pausedAll && !isFocus && !isHover) {
+          pr.orbitalAngle += pr.orbitSpeed * delta;
+          pr.orbitPivot.rotation.y = pr.orbitalAngle;
+        }
+
+        if (pr.moonPivot) {
+          pr.moonPivot.rotation.y += delta * 0.95;
+        }
+        if (pr.beaconPivot) {
+          pr.beaconPivot.rotation.y -= delta * 0.72;
+        }
+
+        // Smooth hover / focus visual highlight
+        const targetScale = isFocus ? 1.12 : isHover ? 1.16 : 1.0;
+        const curScale = pr.planetAnchor.scale.x;
+        const nextScale = THREE.MathUtils.damp(curScale, targetScale, 8, delta);
+        pr.planetAnchor.scale.setScalar(nextScale);
+
+        pr.orbitRingMat.opacity = THREE.MathUtils.damp(
+          pr.orbitRingMat.opacity,
+          isFocus ? 0.85 : isHover ? 0.65 : 0.22,
+          8,
+          delta
+        );
+        pr.targetRingMat.opacity = THREE.MathUtils.damp(
+          pr.targetRingMat.opacity,
+          isFocus ? 0.92 : isHover ? 0.78 : 0.0,
+          10,
+          delta
+        );
+        if (isFocus || isHover) {
+          pr.targetRing.rotation.z += delta * 1.4;
+        }
+      });
+
+      // Animate 7-Part Star-Cruiser Spaceship
+      const thrusterPulse = 0.85 + Math.sin(elapsed * 26) * 0.28;
+      thrusterLeft.scale.z = thrusterPulse;
+      thrusterRight.scale.z = thrusterPulse;
+
+      if (curFocused && planetRuntimes[curFocused]) {
+        const pr = planetRuntimes[curFocused];
+        pr.planetAnchor.getWorldPosition(_vec3A);
+        const escortAngle = elapsed * 0.75;
+        _vec3B.set(
+          _vec3A.x + Math.cos(escortAngle) * (pr.planetRadius * 2.15),
+          _vec3A.y + pr.planetRadius * 0.72 + Math.sin(elapsed * 1.6) * 0.25,
+          _vec3A.z + Math.sin(escortAngle) * (pr.planetRadius * 2.15)
+        );
+        cruiserGroup.position.lerp(_vec3B, Math.min(1, delta * 3.5));
+        _vec3C.set(
+          _vec3A.x + Math.cos(escortAngle + 0.25) * (pr.planetRadius * 2.15),
+          _vec3A.y + pr.planetRadius * 0.72,
+          _vec3A.z + Math.sin(escortAngle + 0.25) * (pr.planetRadius * 2.15)
+        );
+        cruiserGroup.lookAt(_vec3C);
+      } else {
+        cruiserT = (cruiserT + delta * 0.045) % 1;
+        patrolCurve.getPointAt(cruiserT, _vec3A);
+        patrolCurve.getPointAt((cruiserT + 0.015) % 1, _vec3B);
+        cruiserGroup.position.lerp(_vec3A, Math.min(1, delta * 4));
+        cruiserGroup.lookAt(_vec3B);
+      }
+
+      // Smooth Camera Fly-To / Return-to-Overview
+      if (isAutoGlidingRef.current) {
+        if (cameraGoalRef.current === 'planet' && curFocused && planetRuntimes[curFocused]) {
+          const pr = planetRuntimes[curFocused];
+          pr.planetAnchor.getWorldPosition(_vec3A); // Desired target
+
+          // Compute outward vantage direction from the Sun so sun lights the planet face nicely!
+          _vec3B.copy(_vec3A).normalize();
+          if (_vec3B.lengthSq() < 0.01) _vec3B.set(0, 0, 1);
+          const dist = pr.planetRadius * 4.2 + 2.4;
+          _vec3C.set(
+            _vec3A.x + _vec3B.x * dist + _vec3B.z * (dist * 0.42),
+            _vec3A.y + pr.planetRadius * 1.85 + 1.15,
+            _vec3A.z + _vec3B.z * dist - _vec3B.x * (dist * 0.42)
+          );
+
+          controls.target.x = THREE.MathUtils.damp(controls.target.x, _vec3A.x, 5.5, delta);
+          controls.target.y = THREE.MathUtils.damp(controls.target.y, _vec3A.y, 5.5, delta);
+          controls.target.z = THREE.MathUtils.damp(controls.target.z, _vec3A.z, 5.5, delta);
+
+          camera.position.x = THREE.MathUtils.damp(camera.position.x, _vec3C.x, 4.6, delta);
+          camera.position.y = THREE.MathUtils.damp(camera.position.y, _vec3C.y, 4.6, delta);
+          camera.position.z = THREE.MathUtils.damp(camera.position.z, _vec3C.z, 4.6, delta);
+
+          if (camera.position.distanceTo(_vec3C) < 0.08 && controls.target.distanceTo(_vec3A) < 0.06) {
+            isAutoGlidingRef.current = false;
+          }
+        } else if (cameraGoalRef.current === 'overview') {
+          controls.target.x = THREE.MathUtils.damp(controls.target.x, _overviewTarget.x, 5.0, delta);
+          controls.target.y = THREE.MathUtils.damp(controls.target.y, _overviewTarget.y, 5.0, delta);
+          controls.target.z = THREE.MathUtils.damp(controls.target.z, _overviewTarget.z, 5.0, delta);
+
+          camera.position.x = THREE.MathUtils.damp(camera.position.x, _overviewCamPos.x, 4.2, delta);
+          camera.position.y = THREE.MathUtils.damp(camera.position.y, _overviewCamPos.y, 4.2, delta);
+          camera.position.z = THREE.MathUtils.damp(camera.position.z, _overviewCamPos.z, 4.2, delta);
+
+          if (camera.position.distanceTo(_overviewCamPos) < 0.12) {
+            isAutoGlidingRef.current = false;
+          }
+        }
+      }
+
+      controls.update();
+      renderer.render(scene, camera);
+
+      // Project 3D Planet Nameplate Overlays directly via DOM refs (zero React re-renders!)
+      const canvasW = container.clientWidth;
+      const canvasH = container.clientHeight;
+      SECTORS.forEach((sec) => {
+        const el = labelRefs.current[sec.id];
+        if (!el) return;
+        const pr = planetRuntimes[sec.id];
+        pr.planetAnchor.getWorldPosition(_vec3A);
+        _vec3A.y += pr.planetRadius * 1.48 + 0.35;
+        _vec3A.project(camera);
+
+        const inFront = _vec3A.z > -1 && _vec3A.z < 1;
+        const sx = (_vec3A.x * 0.5 + 0.5) * canvasW;
+        const sy = (-_vec3A.y * 0.5 + 0.5) * canvasH;
+        const inBounds = sx > 44 && sx < canvasW - 44 && sy > 70 && sy < canvasH - 42;
+
+        if (!inFront || !inBounds) {
+          el.style.opacity = '0';
+          el.style.pointerEvents = 'none';
+          return;
+        }
+
+        const dimmed = Boolean(curFocused && curFocused !== sec.id);
+        el.style.transform = `translate3d(${sx.toFixed(1)}px, ${sy.toFixed(1)}px, 0) translate(-50%, -100%)`;
+        el.style.opacity = dimmed ? '0.32' : '1';
+        el.style.pointerEvents = 'auto';
+      });
+
+      if (isSoftwareGl) {
+        afterDraw(tick);
+      } else {
+        rafId = window.requestAnimationFrame(tick);
+      }
+    };
+
+    if (isSoftwareGl) {
+      afterDraw(tick);
+    } else {
+      rafId = window.requestAnimationFrame(tick);
+    }
+
+    return () => {
+      disposed = true;
+      liveThemeSyncRef.current = null;
+      if (rafId) window.cancelAnimationFrame(rafId);
+      if (swTimerId !== null) window.clearTimeout(swTimerId);
+      resizeObserver.disconnect();
+      controls.removeEventListener('start', handleControlsStart);
+      renderer.domElement.removeEventListener('pointermove', handlePointerMove);
+      renderer.domElement.removeEventListener('pointerdown', handlePointerDown);
+      renderer.domElement.removeEventListener('pointerup', handlePointerUp);
+      renderer.domElement.removeEventListener('pointerleave', handlePointerLeave);
+      controls.dispose();
+      disposableGeos.forEach((g) => g.dispose());
+      disposableMats.forEach((m) => m.dispose());
+      disposableTexs.forEach((t) => t.dispose());
+      envRT.dispose();
+      renderer.dispose();
+      if (renderer.domElement.parentNode === container) {
+        container.removeChild(renderer.domElement);
+      }
+    };
+  }, []);
+
+  const handleResetOverview = () => {
+    soundEngine.playClick();
+    setFocusedSector(null);
+    cameraGoalRef.current = 'overview';
+    isAutoGlidingRef.current = true;
+  };
+
+  const handleDockPlanetClick = (id: SectorId) => {
+    if (focusedSector === id) {
+      soundEngine.playWarp();
+      onSelectSector(id);
       return;
     }
-
-    let rafId = 0;
-    let last = performance.now();
-    const tick = (now: number) => {
-      const dt = Math.min(50, now - last);
-      last = now;
-      if (!dragRef.current.active) {
-        setRotLon((prev) => prev + dt * 0.008);
-      }
-      rafId = requestAnimationFrame(tick);
-    };
-    rafId = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(rafId);
-  }, [isDark, effectivePaused]);
-
-  const handleHoverPlanet = (id: SectorId | null) => {
-    setHoveredSector((prev) => {
-      if (id && id !== prev) {
-        soundEngine.playHoverLock();
-      }
-      return id;
-    });
+    soundEngine.playHoverLock();
+    setFocusedSector(id);
   };
-
-  const handleEnterSector = (id: SectorId) => {
-    soundEngine.unlockIfNeeded();
-    soundEngine.playWarp();
-    onSelectSector(id);
-  };
-
-  const focusIslandOnMap = (id: SectorId) => {
-    handleHoverPlanet(id);
-    if (!isDark) {
-      const geo = PLANET_META[id];
-      setRotLon(geo.lon);
-      setRotLat(geo.lat * 0.45);
-    }
-  };
-
-  const handlePointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
-    dragRef.current = { active: true, x: e.clientX, y: e.clientY, moved: false };
-  };
-
-  const handlePointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
-    if (!dragRef.current.active) return;
-    const dx = e.clientX - dragRef.current.x;
-    const dy = e.clientY - dragRef.current.y;
-    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) dragRef.current.moved = true;
-    dragRef.current.x = e.clientX;
-    dragRef.current.y = e.clientY;
-    setRotLon((prev) => prev - dx * 0.45);
-    setRotLat((prev) => Math.max(-45, Math.min(45, prev + dy * 0.35)));
-  };
-
-  const handlePointerUp = () => {
-    dragRef.current.active = false;
-  };
-
-  // Bright Planet Globe Geometry (Larger 70% Stage)
-  const R = 216;
-  const cx = 310;
-  const cy = 310;
-
-  const graticulePaths = useMemo(() => {
-    if (isDark) return [];
-    const paths: string[] = [];
-    for (let lat = -60; lat <= 60; lat += 30) {
-      let d = '';
-      let pen = false;
-      for (let lon = -180; lon <= 180; lon += 8) {
-        const p = projectSphere(lon, lat, rotLon, rotLat, R);
-        if (p.z > 0) {
-          d += `${pen ? 'L' : 'M'}${(cx + p.x).toFixed(1)},${(cy + p.y).toFixed(1)} `;
-          pen = true;
-        } else {
-          pen = false;
-        }
-      }
-      if (d) paths.push(d);
-    }
-    for (let lon = -150; lon <= 180; lon += 30) {
-      let d = '';
-      let pen = false;
-      for (let lat = -85; lat <= 85; lat += 6) {
-        const p = projectSphere(lon, lat, rotLon, rotLat, R);
-        if (p.z > 0) {
-          d += `${pen ? 'L' : 'M'}${(cx + p.x).toFixed(1)},${(cy + p.y).toFixed(1)} `;
-          pen = true;
-        } else {
-          pen = false;
-        }
-      }
-      if (d) paths.push(d);
-    }
-    return paths;
-  }, [isDark, rotLon, rotLat]);
-
-  const projectedIslands = useMemo(() => {
-    if (isDark) return [];
-    return SECTORS.map((sec) => {
-      const geo = PLANET_META[sec.id];
-      const p = projectSphere(geo.lon, geo.lat, rotLon, rotLat, R);
-      const starStats = getSectorStarStats(sec, profile.sectors[sec.id]);
-      return {
-        sec,
-        geo,
-        ...p,
-        starStats,
-      };
-    })
-      .filter((item) => item.z > -0.06)
-      .sort((a, b) => a.z - b.z);
-  }, [isDark, rotLon, rotLat, profile]);
 
   return (
-    <div className="mx-auto max-w-7xl px-6 pt-5">
-      {/* Compact Workspace Toolbar */}
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200/90 bg-white/85 px-4 py-2.5 shadow-sm backdrop-blur-md dark:border-slate-800 dark:bg-[#0D1424]/90 dark:shadow-none">
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={onOpenProgressModal}
-            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-800 transition-colors hover:border-sky-400 hover:bg-sky-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:border-cyan-400"
-          >
-            <User className="h-3.5 w-3.5 text-sky-600 dark:text-cyan-400" aria-hidden="true" />
-            <span>學生：{profile.name}</span>
-          </button>
+    <div className="relative h-[calc(100vh-68px)] min-h-[600px] w-full overflow-hidden select-none">
+      {/* ================= FULL-VIEWPORT THREE.JS WEBGL 3D SPACE CANVAS ================= */}
+      <div
+        ref={canvasMountRef}
+        aria-label="3D 星際探險太陽系舞台（可拖曳 360 度環視、滾輪縮放、點擊八大數學星球）"
+        className="absolute inset-0 h-full w-full"
+      />
 
-          <button
-            type="button"
-            onClick={onOpenProgressModal}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition-colors hover:border-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
-          >
-            <SlidersHorizontal className="h-3.5 w-3.5" aria-hidden="true" />
-            <span>進度管理</span>
-          </button>
+      {/* ================= 3D-PROJECTED FLOATING PLANET NAMEPLATES ================= */}
+      <div className="pointer-events-none absolute inset-0 z-10 overflow-hidden">
+        {SECTORS.map((sec) => {
+          const meta = PLANET_META[sec.id];
+          const stats = getSectorStarStats(sec, profile.sectors[sec.id]);
+          const isFocused = focusedSector === sec.id;
+          const isHovered = hoveredSector === sec.id;
+          const isRecommended = nextRecommendedSector === sec.id && !focusedSector;
+          const isCompleted = stats.earned === stats.total;
 
-          <button
-            type="button"
-            onClick={onOpenWrongModal}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700 transition-colors hover:bg-rose-100 dark:border-rose-500/40 dark:bg-rose-500/10 dark:text-rose-200 dark:hover:bg-rose-500/20"
-          >
-            <BookMarked className="h-3.5 w-3.5" aria-hidden="true" />
-            <span className="tabular-nums">錯題複習（{wrongCount}）</span>
-          </button>
+          return (
+            <button
+              key={sec.id}
+              ref={(node) => {
+                labelRefs.current[sec.id] = node;
+              }}
+              type="button"
+              data-sfx="custom"
+              onMouseEnter={() => setHoveredSector(sec.id)}
+              onMouseLeave={() => setHoveredSector((prev) => (prev === sec.id ? null : prev))}
+              onClick={() => handleDockPlanetClick(sec.id)}
+              aria-label={`飛往第 ${sec.code} 星球 ${sec.shortTitle}，目前已收集 ${stats.earned} 顆星`}
+              style={{
+                opacity: 0,
+                borderColor: isFocused || isHovered ? meta.color : undefined,
+              }}
+              className={`webgl-hud-surface pointer-events-auto absolute top-0 left-0 flex items-center gap-1.5 rounded-xl px-2.5 py-1 text-[11px] font-bold shadow-lg transition-[border-color,box-shadow] duration-150 ${
+                isFocused
+                  ? 'ring-2 ring-cyan-400/80'
+                  : isRecommended
+                  ? 'ring-1 ring-amber-400/70'
+                  : ''
+              }`}
+            >
+              <span
+                className="inline-block h-2 w-2 shrink-0 rounded-full"
+                style={{ backgroundColor: meta.color }}
+              />
+              <span className="font-mono text-[10px] opacity-80">{sec.code}</span>
+              <span className="whitespace-nowrap">{sec.shortTitle}</span>
+              <span
+                className={`inline-flex items-center gap-0.5 rounded-md px-1 py-0.5 font-mono text-[10px] ${
+                  isCompleted
+                    ? 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300'
+                    : 'bg-amber-500/20 text-amber-700 dark:text-amber-300'
+                }`}
+              >
+                <Star className="h-2.5 w-2.5 fill-current" aria-hidden="true" />
+                {stats.earned}/{stats.total}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* ================= TOP-LEFT COMPACT ACHIEVEMENT WALL HUD (NO BACKDROP BLUR) ================= */}
+      <div className="pointer-events-none absolute top-3 left-3 z-20 flex max-w-[330px] flex-col gap-2 sm:left-4">
+        <div className="pointer-events-auto">
+          <AchievementWallBar profile={profile} theme={theme} variant="corner" noBlur />
         </div>
+        <div className="webgl-hud-surface pointer-events-auto hidden items-center gap-2 rounded-xl px-3 py-1.5 text-[11px] font-semibold text-slate-700 sm:inline-flex dark:text-slate-200">
+          <Compass className="h-3.5 w-3.5 text-sky-600 dark:text-cyan-300" aria-hidden="true" />
+          <span>拖曳 360° 環視宇宙 · 滾輪縮放 · 點擊星球飛近登陸</span>
+        </div>
+      </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="inline-flex rounded-xl border border-slate-200 bg-slate-100 p-1 dark:border-slate-700 dark:bg-[#080D1A]">
-            <button
-              type="button"
-              onClick={() => onToggleTheme('dark')}
-              className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1 text-xs font-semibold transition-colors ${
-                theme === 'dark'
-                  ? 'bg-cyan-500 text-slate-950'
-                  : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
-              }`}
-            >
-              <Moon className="h-3.5 w-3.5" aria-hidden="true" />
-              <span>動感太空</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => onToggleTheme('light')}
-              className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1 text-xs font-semibold transition-colors ${
-                theme === 'light'
-                  ? 'bg-white text-slate-900 shadow-sm'
-                  : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
-              }`}
-            >
+      {/* ================= TOP-RIGHT COMPACT SYSTEM CONTROLS HUD (NO BACKDROP BLUR) ================= */}
+      <div className="pointer-events-none absolute top-3 right-3 z-20 flex flex-col items-end gap-2 sm:right-4">
+        <div className="webgl-hud-surface pointer-events-auto flex flex-wrap items-center justify-end gap-1.5 rounded-2xl p-1.5">
+          <button
+            type="button"
+            onClick={() => onToggleTheme(getNextThemeMode(theme))}
+            title={`點擊切換光源：${themeMeta.label}`}
+            className="inline-flex items-center gap-1.5 rounded-xl bg-slate-900/5 px-2.5 py-1.5 text-[11px] font-bold text-slate-800 transition-colors hover:bg-sky-500/15 dark:bg-white/10 dark:text-white dark:hover:bg-cyan-500/20"
+          >
+            {isDark ? (
+              <Moon className="h-3.5 w-3.5 text-cyan-300" aria-hidden="true" />
+            ) : (
               <Sun className="h-3.5 w-3.5 text-amber-500" aria-hidden="true" />
-              <span>明亮星球</span>
-            </button>
-          </div>
-
-          <div className="inline-flex rounded-xl border border-slate-200 bg-slate-100 p-1 dark:border-slate-700 dark:bg-[#080D1A]">
-            <button
-              type="button"
-              onClick={() => onChangeMode('student')}
-              className={`whitespace-nowrap rounded-lg px-3 py-1 text-xs font-semibold ${
-                mode === 'student'
-                  ? 'bg-sky-600 text-white dark:bg-cyan-500 dark:text-slate-950'
-                  : 'text-slate-600 dark:text-slate-300'
-              }`}
-            >
-              學生自學
-            </button>
-            <button
-              type="button"
-              onClick={() => onChangeMode('projector')}
-              className={`whitespace-nowrap rounded-lg px-3 py-1 text-xs font-semibold ${
-                mode === 'projector'
-                  ? 'bg-amber-500 text-white dark:bg-amber-400 dark:text-slate-950'
-                  : 'text-slate-600 dark:text-slate-300'
-              }`}
-            >
-              教室投影
-            </button>
-          </div>
+            )}
+            <span className="hidden sm:inline">{themeMeta.label}</span>
+          </button>
 
           <AudioToggleButtons compact />
 
           <button
             type="button"
-            onClick={() => {
-              soundEngine.playClick();
-              onOpenBattle();
-            }}
-            className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-xl bg-amber-500 px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-amber-600 dark:bg-amber-400 dark:text-slate-950 dark:hover:bg-amber-300"
+            onClick={() => onChangeMode(mode === 'student' ? 'projector' : 'student')}
+            className={`inline-flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-[11px] font-bold transition-colors ${
+              mode === 'projector'
+                ? 'bg-sky-600 text-white'
+                : 'bg-slate-900/5 text-slate-800 hover:bg-sky-500/15 dark:bg-white/10 dark:text-slate-100'
+            }`}
           >
-            <Swords className="h-3.5 w-3.5" aria-hidden="true" />
-            <span>線上搶答對戰</span>
+            <span>{mode === 'projector' ? '教室投影' : '學生自學'}</span>
           </button>
 
           <button
             type="button"
-            onClick={() => {
-              soundEngine.playClick();
-              onSwitchToGrid();
-            }}
-            className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:border-sky-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-cyan-400"
+            onClick={onOpenBattle}
+            className="inline-flex items-center gap-1 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 px-2.5 py-1.5 text-[11px] font-extrabold text-white shadow-sm transition-transform hover:scale-105"
           >
-            <LayoutGrid className="h-3.5 w-3.5" aria-hidden="true" />
-            <span>八區航圖</span>
+            <Swords className="h-3.5 w-3.5" aria-hidden="true" />
+            <span className="hidden md:inline">多人搶答</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={onOpenWrongModal}
+            className="inline-flex items-center gap-1 rounded-xl bg-slate-900/5 px-2.5 py-1.5 text-[11px] font-bold text-slate-800 hover:bg-rose-500/15 dark:bg-white/10 dark:text-slate-100"
+          >
+            <BookMarked className="h-3.5 w-3.5 text-rose-500 dark:text-rose-400" aria-hidden="true" />
+            <span className="font-mono">{wrongCount}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={onOpenProgressModal}
+            aria-label="題庫與雲端管理"
+            className="inline-flex items-center gap-1 rounded-xl bg-slate-900/5 px-2.5 py-1.5 text-[11px] font-bold text-slate-800 hover:bg-sky-500/15 dark:bg-white/10 dark:text-slate-100"
+          >
+            <SlidersHorizontal className="h-3.5 w-3.5 text-sky-600 dark:text-cyan-300" aria-hidden="true" />
+            <span className="hidden xl:inline">題庫雲端</span>
           </button>
         </div>
       </div>
 
-      {/* Achievement Badges Wall Bar */}
-      <AchievementWallBar profile={profile} theme={theme} />
+      {/* ================= FOCUSED PLANET MISSION LAUNCH OVERLAY ================= */}
+      {focusedSectorDef && focusedSectorStats && (
+        <div
+          className={`pointer-events-auto fixed left-1/2 z-30 w-[92%] max-w-[440px] -translate-x-1/2 transition-all ${
+            dockOpen ? 'bottom-[116px]' : 'bottom-12'
+          }`}
+        >
+          <div className="webgl-hud-surface rounded-2xl p-4 shadow-2xl">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span
+                    className="inline-flex items-center gap-1 rounded-lg px-2 py-0.5 text-[11px] font-bold text-white"
+                    style={{ backgroundColor: PLANET_META[focusedSectorDef.id].color }}
+                  >
+                    <Crosshair className="h-3 w-3" aria-hidden="true" />
+                    第 {focusedSectorDef.code} 星球鎖定
+                  </span>
+                  <span className="text-xs font-semibold text-sky-700 dark:text-cyan-300">
+                    {PLANET_SUBTITLE_MAP[focusedSectorDef.id]}
+                  </span>
+                </div>
+                <h2 className="mt-1.5 text-lg font-extrabold text-slate-900 dark:text-white">
+                  {focusedSectorDef.title}
+                </h2>
+              </div>
 
-      {/* 70% Main Visual Stage (col-span-8) + 30% Streamlined Sidebar (col-span-4) */}
-      <div className="grid grid-cols-1 items-center gap-6 lg:grid-cols-12">
-        {/* Left ~70% Big Animated Stage */}
-        <div className="flex flex-col items-center lg:col-span-8">
-          {isDark ? (
-            <div className="relative w-full max-w-[740px] select-none rounded-3xl border border-slate-800/90 bg-[#050A16]/85 p-4 shadow-2xl backdrop-blur-md">
-              <div className="mb-1 flex items-center justify-between px-2 text-xs">
-                <span className="font-mono font-semibold text-cyan-300">
-                  星際太陽系星圖 · 點選軌道大行星即刻啟航
+              <button
+                type="button"
+                onClick={handleResetOverview}
+                aria-label="取消特寫並返回星系全景"
+                className="flex h-8 w-8 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-200/70 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
+              >
+                <X className="h-4 w-4" aria-hidden="true" />
+              </button>
+            </div>
+
+            <div className="mt-2.5 flex flex-wrap items-center gap-3 text-xs font-semibold text-slate-600 dark:text-slate-300">
+              <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-300">
+                <Star className="h-3.5 w-3.5 fill-current" aria-hidden="true" />
+                {focusedSectorStats.earned} / {focusedSectorStats.total} 顆星星
+              </span>
+              <span>·</span>
+              <span>創意對戰：{focusedSectorDef.creativeName}</span>
+            </div>
+
+            <div className="mt-3.5 flex items-center gap-2">
+              <button
+                type="button"
+                data-sfx="custom"
+                onClick={() => {
+                  soundEngine.playWarp();
+                  onSelectSector(focusedSectorDef.id);
+                }}
+                className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-sky-500 to-cyan-500 px-4 py-2.5 text-sm font-extrabold text-white shadow-md transition-transform hover:scale-[1.02]"
+              >
+                <span>立即降落探索</span>
+                <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              </button>
+
+              <button
+                type="button"
+                onClick={handleResetOverview}
+                className="inline-flex items-center gap-1 rounded-xl border border-slate-300/80 bg-white/80 px-3 py-2.5 text-xs font-bold text-slate-700 hover:border-sky-400 dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-200"
+              >
+                <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
+                <span>全景</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ================= COLLAPSIBLE BOTTOM STAR-SYSTEM CONTROL DOCK ================= */}
+      <div className="pointer-events-none fixed bottom-2.5 left-1/2 z-20 flex w-[96%] max-w-[1040px] -translate-x-1/2 flex-col items-center">
+        <button
+          type="button"
+          onClick={() => setDockOpen((v) => !v)}
+          aria-expanded={dockOpen}
+          className="webgl-hud-surface pointer-events-auto inline-flex items-center gap-1.5 rounded-t-xl border-b-0 px-3.5 py-1 text-[11px] font-bold text-slate-800 shadow-md transition-colors hover:text-sky-600 dark:text-slate-100 dark:hover:text-cyan-300"
+        >
+          {dockOpen ? (
+            <>
+              <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
+              <span>收合星際導航列 (H)</span>
+            </>
+          ) : (
+            <>
+              <ChevronUp className="h-3.5 w-3.5" aria-hidden="true" />
+              <span>展開星際導航列 · 8 大探索星球 (H)</span>
+            </>
+          )}
+        </button>
+
+        {dockOpen && (
+          <div className="webgl-hud-surface pointer-events-auto flex w-full flex-col gap-2 rounded-2xl px-3 py-2.5 shadow-2xl lg:flex-row lg:items-center lg:justify-between">
+            {/* Left Telemetry + Orbit Controls */}
+            <div className="flex flex-wrap items-center justify-between gap-2 lg:justify-start">
+              <div className="flex items-center gap-2.5 text-xs font-bold">
+                <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-300">
+                  <Star className="h-3.5 w-3.5 fill-current" aria-hidden="true" />
+                  <span className="font-mono">
+                    {totalEarnedStars}/{totalSystemStars}
+                  </span>
                 </span>
+                <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-300">
+                  <Flag className="h-3.5 w-3.5" aria-hidden="true" />
+                  <span className="font-mono">{completedPlanets}/8</span>
+                </span>
+                <span className="inline-flex items-center gap-1 text-sky-700 dark:text-cyan-300">
+                  <Trophy className="h-3.5 w-3.5" aria-hidden="true" />
+                  <span className="font-mono">{profile.totalScore} 分</span>
+                </span>
+              </div>
+
+              <div className="flex items-center gap-1.5">
                 <button
                   type="button"
-                  onClick={() => setIsMotionPaused((p) => !p)}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-900/90 px-3 py-1 text-xs font-semibold text-slate-200 hover:border-cyan-400"
+                  onClick={() => setOrbitPaused((p) => !p)}
+                  className="inline-flex items-center gap-1 rounded-lg bg-slate-900/5 px-2.5 py-1 text-[11px] font-bold text-slate-800 hover:bg-sky-500/15 dark:bg-white/10 dark:text-slate-100"
                 >
-                  {isMotionPaused ? (
+                  {orbitPaused ? (
                     <>
-                      <Play className="h-3.5 w-3.5 text-emerald-400" aria-hidden="true" />
+                      <Play className="h-3 w-3 text-emerald-500" aria-hidden="true" />
                       <span>繼續公轉</span>
                     </>
                   ) : (
                     <>
-                      <Pause className="h-3.5 w-3.5 text-amber-300" aria-hidden="true" />
+                      <Pause className="h-3 w-3 text-sky-500 dark:text-cyan-300" aria-hidden="true" />
                       <span>暫停公轉</span>
                     </>
                   )}
                 </button>
+
+                <button
+                  type="button"
+                  onClick={handleResetOverview}
+                  className="inline-flex items-center gap-1 rounded-lg bg-slate-900/5 px-2.5 py-1 text-[11px] font-bold text-slate-800 hover:bg-sky-500/15 dark:bg-white/10 dark:text-slate-100"
+                >
+                  <RotateCcw className="h-3 w-3" aria-hidden="true" />
+                  <span>全景</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={onSwitchToGrid}
+                  className="inline-flex items-center gap-1 rounded-lg bg-slate-900/5 px-2.5 py-1 text-[11px] font-bold text-slate-800 hover:bg-sky-500/15 dark:bg-white/10 dark:text-slate-100"
+                >
+                  <LayoutGrid className="h-3 w-3" aria-hidden="true" />
+                  <span>航圖</span>
+                </button>
               </div>
+            </div>
 
-              <svg
-                viewBox="0 0 680 680"
-                className="h-auto w-full overflow-visible"
-                role="img"
-                aria-label="動感大型軌道太陽系星圖，顯示 8 顆立體銜接數學行星公轉與自轉"
-              >
-                <defs>
-                  <radialGradient id="nebulaAura" cx="50%" cy="50%" r="50%">
-                    <stop offset="0%" stopColor="#0EA5E9" stopOpacity="0.16" />
-                    <stop offset="55%" stopColor="#6366F1" stopOpacity="0.08" />
-                    <stop offset="100%" stopColor="#020617" stopOpacity="0" />
-                  </radialGradient>
-                  <radialGradient id="sunCoreGrad" cx="40%" cy="38%" r="62%">
-                    <stop offset="0%" stopColor="#FEF9C3" />
-                    <stop offset="40%" stopColor="#FBBF24" />
-                    <stop offset="100%" stopColor="#EA580C" />
-                  </radialGradient>
-                  <radialGradient id="sunCorona" cx="50%" cy="50%" r="50%">
-                    <stop offset="0%" stopColor="#FBBF24" stopOpacity="0.52" />
-                    <stop offset="60%" stopColor="#F59E0B" stopOpacity="0.15" />
-                    <stop offset="100%" stopColor="#F59E0B" stopOpacity="0" />
-                  </radialGradient>
-                  {SECTORS.map((sec) => {
-                    const meta = PLANET_META[sec.id];
-                    return (
-                      <g key={`defs-${sec.id}`}>
-                        <radialGradient id={`planet-grad-${sec.id}`} cx="32%" cy="30%" r="72%">
-                          <stop offset="0%" stopColor={meta.colorLight} />
-                          <stop offset="52%" stopColor={meta.color} />
-                          <stop offset="100%" stopColor={meta.colorDeep} />
-                        </radialGradient>
-                        <clipPath id={`planet-clip-${sec.id}`}>
-                          <circle cx="0" cy="0" r={meta.planetRadius} />
-                        </clipPath>
-                      </g>
-                    );
-                  })}
-                  <linearGradient id="radarSweepGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#22D3EE" stopOpacity="0.28" />
-                    <stop offset="65%" stopColor="#0EA5E9" stopOpacity="0.06" />
-                    <stop offset="100%" stopColor="#0EA5E9" stopOpacity="0" />
-                  </linearGradient>
-                </defs>
+            {/* Right Quick-Fly 8 Planets Strip */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 lg:pb-0">
+              {SECTORS.map((sec) => {
+                const meta = PLANET_META[sec.id];
+                const stats = getSectorStarStats(sec, profile.sectors[sec.id]);
+                const isFocused = focusedSector === sec.id;
+                const isDone = stats.earned === stats.total;
+                const isNext = nextRecommendedSector === sec.id && !focusedSector;
 
-                {/* Deep Nebula Backdrop */}
-                <circle cx="340" cy="340" r="325" fill="url(#nebulaAura)" />
-
-                {/* Outer Degree Compass Reticle Ring */}
-                <g
-                  className="animate-cloud-drift"
-                  style={{
-                    transformOrigin: '340px 340px',
-                    animationDuration: '120s',
-                    animationPlayState: effectivePaused ? 'paused' : 'running',
-                  }}
-                >
-                  <circle
-                    cx="340"
-                    cy="340"
-                    r="328"
-                    fill="none"
-                    stroke="#38BDF8"
-                    strokeOpacity="0.22"
-                    strokeWidth="1"
-                    strokeDasharray="2 10"
-                  />
-                  {[0, 45, 90, 135, 180, 225, 270, 315].map((deg) => (
-                    <g key={`deg-${deg}`} transform={`rotate(${deg} 340 340)`}>
-                      <line x1="340" y1="7" x2="340" y2="16" stroke="#38BDF8" strokeOpacity="0.5" strokeWidth="1.5" />
-                      <text x="340" y="27" textAnchor="middle" fill="#64748B" fontSize="8.5" fontFamily="monospace">
-                        {deg}°
-                      </text>
-                    </g>
-                  ))}
-                </g>
-
-                {/* Rotating Starfleet Radar Scanner Beam */}
-                <g
-                  className="animate-radar-sweep"
-                  style={{
-                    transformOrigin: '340px 340px',
-                    animationPlayState: effectivePaused ? 'paused' : 'running',
-                  }}
-                >
-                  <path
-                    d="M 340 340 L 340 20 A 320 320 0 0 1 515 72 Z"
-                    fill="url(#radarSweepGrad)"
-                    opacity="0.7"
-                  />
-                  <line x1="340" y1="340" x2="340" y2="20" stroke="#22D3EE" strokeOpacity="0.45" strokeWidth="1.2" />
-                </g>
-
-                {/* Twinkling Pulsar Stars */}
-                {[
-                  { x: 66, y: 82, s: 5, c: '#7DD3FC', d: '0s' },
-                  { x: 608, y: 112, s: 6, c: '#FDE68A', d: '-1.5s' },
-                  { x: 92, y: 586, s: 5.5, c: '#C4B5FD', d: '-2.6s' },
-                  { x: 590, y: 572, s: 5, c: '#6EE7B7', d: '-0.9s' },
-                ].map((p, idx) => (
-                  <g
-                    key={`pulsar-${idx}`}
-                    transform={`translate(${p.x}, ${p.y})`}
-                    className="animate-island-beacon"
-                    style={{ animationDelay: p.d }}
-                  >
-                    <line x1={-p.s} y1="0" x2={p.s} y2="0" stroke={p.c} strokeWidth="1.4" strokeLinecap="round" />
-                    <line x1="0" y1={-p.s} x2="0" y2={p.s} stroke={p.c} strokeWidth="1.4" strokeLinecap="round" />
-                    <circle cx="0" cy="0" r="1.6" fill="#FFFFFF" />
-                  </g>
-                ))}
-
-                {/* Subtle Asteroid Belt Dots */}
-                <g opacity="0.45">
-                  {ASTEROID_BELT.map((ast, idx) => (
-                    <circle key={idx} cx={ast.x} cy={ast.y} r={ast.r} fill="#94A3B8" />
-                  ))}
-                </g>
-
-                {/* Dual Shooting Comets */}
-                <g className="animate-comet-glide" style={{ opacity: 0.78 }}>
-                  <line x1="78" y1="150" x2="124" y2="118" stroke="#7DD3FC" strokeWidth="2" strokeLinecap="round" strokeOpacity="0.55" />
-                  <circle cx="124" cy="118" r="3" fill="#E0F2FE" />
-                </g>
-                <g className="animate-comet-glide" style={{ animationDelay: '-3.4s', opacity: 0.65 }}>
-                  <line x1="480" y1="540" x2="520" y2="512" stroke="#FDE68A" strokeWidth="1.8" strokeLinecap="round" strokeOpacity="0.5" />
-                  <circle cx="520" cy="512" r="2.6" fill="#FEF9C3" />
-                </g>
-
-                {/* Concentric Orbit Rings (Brighter Emerald/Cyan when Cleared) */}
-                {SECTORS.map((sec) => {
-                  const meta = PLANET_META[sec.id];
-                  const starStats = getSectorStarStats(sec, profile.sectors[sec.id]);
-                  const isHov = hoveredSector === sec.id;
-                  return (
-                    <circle
-                      key={`orbit-${sec.id}`}
-                      cx="340"
-                      cy="340"
-                      r={meta.orbitRadius}
-                      fill="none"
-                      stroke={isHov ? meta.glowColor : starStats.allDone ? '#34D399' : '#38BDF8'}
-                      strokeOpacity={isHov ? 0.9 : starStats.allDone ? 0.45 : 0.2}
-                      strokeWidth={isHov ? 2.4 : starStats.allDone ? 1.5 : 1.1}
-                      strokeDasharray={isHov || starStats.allDone ? 'none' : '5 6'}
-                    />
-                  );
-                })}
-
-                {/* Patrolling Explorer Starship & Scout Probe */}
-                <g
-                  className="animate-orbit-spin"
-                  style={{
-                    transformOrigin: '340px 340px',
-                    animationDuration: '34s',
-                    animationDelay: '-11s',
-                    animationPlayState: effectivePaused ? 'paused' : 'running',
-                  }}
-                >
-                  <g transform="translate(508, 340)">
-                    {/* Ion Exhaust Trail */}
-                    <path d="M 0 18 L 0 42" stroke="#22D3EE" strokeWidth="2.5" strokeLinecap="round" strokeOpacity="0.65" strokeDasharray="3 3" />
-                    <polygon points="0,-10 7,8 0,4 -7,8" fill="#F8FAFC" stroke="#22D3EE" strokeWidth="1.3" />
-                    <circle cx="0" cy="-1" r="2.2" fill="#38BDF8" />
-                  </g>
-                </g>
-                <g
-                  className="animate-orbit-spin"
-                  style={{
-                    transformOrigin: '340px 340px',
-                    animationDuration: '48s',
-                    animationDelay: '-26s',
-                    animationPlayState: effectivePaused ? 'paused' : 'running',
-                  }}
-                >
-                  <g transform="translate(612, 340)">
-                    <circle cx="0" cy="0" r="3.2" fill="#FBBF24" />
-                    <line x1="-7" y1="0" x2="7" y2="0" stroke="#94A3B8" strokeWidth="1.5" />
-                  </g>
-                </g>
-
-                {/* Central Sun Core */}
-                <g transform="translate(340, 340)">
-                  <circle cx="0" cy="0" r="64" fill="url(#sunCorona)" className="animate-solar-pulse" />
-                  <circle
-                    cx="0"
-                    cy="0"
-                    r="44"
-                    fill="none"
-                    stroke="#FDE68A"
-                    strokeOpacity="0.35"
-                    strokeWidth="1.5"
-                    strokeDasharray="6 8"
-                    className="animate-cloud-drift"
-                  />
-                  <circle cx="0" cy="0" r="34" fill="url(#sunCoreGrad)" stroke="#FEF08A" strokeWidth="2" />
-                  <text x="0" y="-2" textAnchor="middle" fill="#451A03" fontSize="13" fontWeight="800">
-                    數學
-                  </text>
-                  <text x="0" y="13" textAnchor="middle" fill="#451A03" fontSize="11" fontWeight="700">
-                    太陽核心
-                  </text>
-                </g>
-
-                {/* 8 Large Orbiting & Rotating Planets */}
-                {SECTORS.map((sec) => {
-                  const meta = PLANET_META[sec.id];
-                  const starStats = getSectorStarStats(sec, profile.sectors[sec.id]);
-                  const isHov = hoveredSector === sec.id;
-
-                  return (
-                    <g
-                      key={sec.id}
-                      className="animate-orbit-spin"
-                      style={{
-                        transformOrigin: '340px 340px',
-                        animationDuration: `${meta.orbitDuration}s`,
-                        animationDelay: `${-((meta.startAngle / 360) * meta.orbitDuration)}s`,
-                        animationPlayState: effectivePaused ? 'paused' : 'running',
-                      }}
-                    >
-                      <g
-                        transform={`translate(${340 + meta.orbitRadius}, 340)`}
-                        className="cursor-pointer"
-                        onMouseEnter={() => handleHoverPlanet(sec.id)}
-                        onMouseLeave={() => handleHoverPlanet(null)}
-                        onClick={() => handleEnterSector(sec.id)}
-                      >
-                        <g
-                          className="animate-counter-orbit-spin"
-                          style={{
-                            transformOrigin: '0px 0px',
-                            animationDuration: `${meta.orbitDuration}s`,
-                            animationDelay: `${-((meta.startAngle / 360) * meta.orbitDuration)}s`,
-                            animationPlayState: effectivePaused ? 'paused' : 'running',
-                          }}
-                        >
-                          {/* Atmosphere Halo & Hover/Cleared Beacon */}
-                          <circle
-                            cx="0"
-                            cy="0"
-                            r={meta.planetRadius + 7}
-                            fill={meta.glowColor}
-                            fillOpacity={isHov ? 0.24 : 0.1}
-                          />
-                          {(isHov || starStats.allDone) && (
-                            <circle
-                              cx="0"
-                              cy="0"
-                              r={meta.planetRadius + 9}
-                              fill="none"
-                              stroke={starStats.allDone ? '#34D399' : '#FFFFFF'}
-                              strokeWidth={isHov ? 2.2 : 1.4}
-                              strokeOpacity={0.9}
-                            />
-                          )}
-
-                          {/* Target-Lock Reticle Crosshairs when Hovered */}
-                          {isHov && (
-                            <g stroke="#22D3EE" strokeWidth="1.6" fill="none">
-                              <circle
-                                cx="0"
-                                cy="0"
-                                r={meta.planetRadius + 14}
-                                strokeDasharray="6 4"
-                                strokeOpacity="0.9"
-                              />
-                              <line x1={-meta.planetRadius - 19} y1="0" x2={-meta.planetRadius - 11} y2="0" />
-                              <line x1={meta.planetRadius + 11} y1="0" x2={meta.planetRadius + 19} y2="0" />
-                              <line x1="0" y1={-meta.planetRadius - 19} x2="0" y2={-meta.planetRadius - 11} />
-                              <line x1="0" y1={meta.planetRadius + 11} x2="0" y2={meta.planetRadius + 19} />
-                            </g>
-                          )}
-
-                          {/* Tilted Double Planetary Ring (Back Arc) */}
-                          {meta.hasRing && (
-                            <ellipse
-                              cx="0"
-                              cy="0"
-                              rx={meta.planetRadius + 13}
-                              ry={6.5}
-                              transform="rotate(-22)"
-                              fill="none"
-                              stroke={meta.glowColor}
-                              strokeOpacity="0.78"
-                              strokeWidth="3"
-                            />
-                          )}
-
-                          {/* 3D-Shaded Large Planet Body */}
-                          <circle
-                            cx="0"
-                            cy="0"
-                            r={meta.planetRadius}
-                            fill={`url(#planet-grad-${sec.id})`}
-                            stroke={isHov ? '#FFFFFF' : meta.glowColor}
-                            strokeWidth={isHov ? 2.2 : 1}
-                          />
-
-                          {/* Axial Rotating Surface Clouds & Craters */}
-                          <g clipPath={`url(#planet-clip-${sec.id})`}>
-                            <g className="animate-planet-axial">
-                              <ellipse
-                                cx="-6"
-                                cy="-6"
-                                rx={meta.planetRadius * 0.85}
-                                ry="3.8"
-                                fill={meta.bandColor}
-                                fillOpacity="0.48"
-                              />
-                              <ellipse
-                                cx="4"
-                                cy="3"
-                                rx={meta.planetRadius * 0.72}
-                                ry="3.2"
-                                fill={meta.bandColor}
-                                fillOpacity="0.32"
-                              />
-                              <circle
-                                cx="-5"
-                                cy="8"
-                                r="3.2"
-                                fill={meta.colorDeep}
-                                fillOpacity="0.42"
-                              />
-                              <circle
-                                cx="8"
-                                cy="-4"
-                                r="2.4"
-                                fill={meta.colorDeep}
-                                fillOpacity="0.35"
-                              />
-                            </g>
-                          </g>
-
-                          {/* Orbiting Mini Moon Satellite */}
-                          {meta.hasMoon && (
-                            <g
-                              className="animate-orbit-spin"
-                              style={{
-                                transformOrigin: '0px 0px',
-                                animationDuration: '6s',
-                                animationPlayState: effectivePaused ? 'paused' : 'running',
-                              }}
-                            >
-                              <circle
-                                cx={meta.planetRadius + 9}
-                                cy="0"
-                                r="4"
-                                fill="#F8FAFC"
-                                stroke={meta.glowColor}
-                                strokeWidth="1"
-                              />
-                            </g>
-                          )}
-
-                          {/* Upright Planet Badge */}
-                          <g transform={`translate(0, ${-meta.planetRadius - 17})`}>
-                            <rect
-                              x="-42"
-                              y="-11"
-                              width="84"
-                              height="21"
-                              rx="10.5"
-                              fill="#070D1D"
-                              fillOpacity={isHov ? 0.98 : 0.88}
-                              stroke={isHov ? '#FFFFFF' : meta.glowColor}
-                              strokeOpacity={isHov ? 1 : 0.7}
-                              strokeWidth={isHov ? 1.6 : 1}
-                            />
-                            <text
-                              x="0"
-                              y="3"
-                              textAnchor="middle"
-                              fill="#F8FAFC"
-                              fontSize="10.5"
-                              fontWeight="700"
-                            >
-                              {sec.code.replace('SEC-', '')} {sec.domainLabel}
-                              {starStats.allDone ? ' ★' : ''}
-                            </text>
-                          </g>
-                        </g>
-                      </g>
-                    </g>
-                  );
-                })}
-              </svg>
-
-              {/* Live Planet Target Telemetry HUD */}
-              {(() => {
-                const activeSec = hoveredSector
-                  ? SECTORS.find((s) => s.id === hoveredSector) ?? null
-                  : null;
-                if (!activeSec) {
-                  return (
-                    <p className="mt-2 text-center text-xs text-slate-400">
-                      探測雷達持續掃描中 · 懸停任一行星可啟動目標鎖定並暫停公轉，點擊即刻躍遷啟航！
-                    </p>
-                  );
-                }
-                const hs = getSectorStarStats(activeSec, profile.sectors[activeSec.id]);
                 return (
-                  <div className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-cyan-500/40 bg-[#071022] px-3.5 py-2 text-xs">
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono font-bold text-cyan-300">{activeSec.code}</span>
-                      <span className="font-bold text-white">{activeSec.title}</span>
-                      <span className="text-slate-400">· 創意對戰：{activeSec.creativeName}</span>
-                    </div>
-                    <div className="font-mono font-bold text-amber-300 tabular-nums">
-                      已奪 {hs.earned}/{hs.total} 顆星 · 點擊降落探索 →
-                    </div>
-                  </div>
-                );
-              })()}
-            </div>
-          ) : (
-            /* Bright Planet Mode: Large 70% Stage with Dynamic Cloud-Sea Halos, Orbiting Airships & Island Beacons */
-            <div className="relative w-full max-w-[700px] select-none rounded-3xl border border-sky-200/80 bg-white/55 p-4 shadow-lg backdrop-blur-md">
-              <div className="mb-1 flex items-center justify-between px-2 text-xs">
-                <span className="font-mono font-semibold text-sky-800">
-                  明亮數學星球 · 雲海光環自動巡航（可拖曳旋轉）
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setIsMotionPaused((p) => !p)}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-sky-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700 hover:border-sky-400"
-                >
-                  {isMotionPaused ? (
-                    <>
-                      <Play className="h-3.5 w-3.5 text-emerald-600" aria-hidden="true" />
-                      <span>繼續巡航</span>
-                    </>
-                  ) : (
-                    <>
-                      <Pause className="h-3.5 w-3.5 text-amber-500" aria-hidden="true" />
-                      <span>暫停巡航</span>
-                    </>
-                  )}
-                </button>
-              </div>
-
-              <svg
-                viewBox="0 0 620 620"
-                className="h-auto w-full cursor-grab active:cursor-grabbing"
-                style={{ touchAction: 'none' }}
-                onPointerDown={handlePointerDown}
-                onPointerMove={handlePointerMove}
-                onPointerUp={handlePointerUp}
-                onPointerLeave={handlePointerUp}
-                role="img"
-                aria-label="動態雲海光環與飛艇巡航的小六升國一明亮數學星球"
-              >
-                <defs>
-                  <radialGradient id="planetOceanLight" cx="36%" cy="32%" r="72%">
-                    <stop offset="0%" stopColor="#60A5FA" />
-                    <stop offset="52%" stopColor="#1D64A8" />
-                    <stop offset="100%" stopColor="#0C2F57" />
-                  </radialGradient>
-                  <radialGradient id="cloudHaloGlow" cx="50%" cy="50%" r="50%">
-                    <stop offset="70%" stopColor="#FFFFFF" stopOpacity="0.65" />
-                    <stop offset="88%" stopColor="#BAE6FD" stopOpacity="0.28" />
-                    <stop offset="100%" stopColor="#FFFFFF" stopOpacity="0" />
-                  </radialGradient>
-                  <clipPath id="globeClip">
-                    <circle cx={cx} cy={cy} r={R} />
-                  </clipPath>
-                </defs>
-
-                {/* Outer Atmosphere Halo */}
-                <circle cx={cx} cy={cy} r={R + 58} fill="url(#cloudHaloGlow)" />
-
-                {/* Dynamic Rotating Cloud-Sea Halo Ring 1 */}
-                <g
-                  className="animate-cloud-drift"
-                  style={{
-                    transformOrigin: `${cx}px ${cy}px`,
-                    animationPlayState: effectivePaused ? 'paused' : 'running',
-                  }}
-                >
-                  <circle
-                    cx={cx}
-                    cy={cy}
-                    r={R + 30}
-                    fill="none"
-                    stroke="#FFFFFF"
-                    strokeOpacity="0.6"
-                    strokeWidth="2.5"
-                    strokeDasharray="24 18 10 22"
-                  />
-                  {/* Sculpted Cloud Wisps */}
-                  {[0, 72, 144, 216, 288].map((deg) => (
-                    <g key={deg} transform={`rotate(${deg} ${cx} ${cy})`}>
-                      <ellipse cx={cx} cy={cy - R - 28} rx="30" ry="10" fill="#FFFFFF" fillOpacity="0.82" />
-                      <ellipse cx={cx - 16} cy={cy - R - 24} rx="16" ry="8" fill="#FFFFFF" fillOpacity="0.72" />
-                      <ellipse cx={cx + 18} cy={cy - R - 25} rx="18" ry="8.5" fill="#E0F2FE" fillOpacity="0.75" />
-                    </g>
-                  ))}
-                </g>
-
-                {/* Dynamic Counter-Rotating Cloud Ring 2 */}
-                <g
-                  className="animate-cloud-drift-reverse"
-                  style={{
-                    transformOrigin: `${cx}px ${cy}px`,
-                    animationPlayState: effectivePaused ? 'paused' : 'running',
-                  }}
-                >
-                  <circle
-                    cx={cx}
-                    cy={cy}
-                    r={R + 50}
-                    fill="none"
-                    stroke="#7DD3FC"
-                    strokeOpacity="0.45"
-                    strokeWidth="1.5"
-                    strokeDasharray="12 16"
-                  />
-                  {[35, 155, 275].map((deg) => (
-                    <g key={deg} transform={`rotate(${deg} ${cx} ${cy})`}>
-                      <ellipse cx={cx} cy={cy - R - 48} rx="22" ry="7.5" fill="#FFFFFF" fillOpacity="0.65" />
-                    </g>
-                  ))}
-                </g>
-
-                {/* Orbiting Airships & Hot Air Balloons */}
-                {/* Airship Orbit */}
-                <g
-                  className="animate-orbit-spin"
-                  style={{
-                    transformOrigin: `${cx}px ${cy}px`,
-                    animationDuration: '32s',
-                    animationPlayState: effectivePaused ? 'paused' : 'running',
-                  }}
-                >
-                  <g transform={`translate(${cx + R + 42}, ${cy})`}>
-                    <g
-                      className="animate-counter-orbit-spin"
-                      style={{
-                        transformOrigin: '0px 0px',
-                        animationDuration: '32s',
-                        animationPlayState: effectivePaused ? 'paused' : 'running',
-                      }}
-                    >
-                      {/* Sleek Sky Airship */}
-                      <ellipse cx="0" cy="-6" rx="22" ry="11" fill="#F97316" stroke="#FFFFFF" strokeWidth="1.5" />
-                      <path d="M -18,-6 Q 0,-12 18,-6" fill="none" stroke="#FEF3C7" strokeWidth="2.5" />
-                      <rect x="-8" y="6" width="16" height="6" rx="2" fill="#78350F" />
-                    </g>
-                  </g>
-                </g>
-
-                {/* Purple Hot Air Balloon Orbit */}
-                <g
-                  className="animate-orbit-spin"
-                  style={{
-                    transformOrigin: `${cx}px ${cy}px`,
-                    animationDuration: '44s',
-                    animationDelay: '-14s',
-                    animationPlayState: effectivePaused ? 'paused' : 'running',
-                  }}
-                >
-                  <g transform={`translate(${cx + R + 34}, ${cy})`}>
-                    <g
-                      className="animate-counter-orbit-spin"
-                      style={{
-                        transformOrigin: '0px 0px',
-                        animationDuration: '44s',
-                        animationDelay: '-14s',
-                        animationPlayState: effectivePaused ? 'paused' : 'running',
-                      }}
-                    >
-                      <ellipse cx="0" cy="0" rx="14" ry="18" fill="#C084FC" stroke="#581C87" strokeWidth="1.2" />
-                      <path d="M -4,-17 Q 0,0 -3,17 M 4,-17 Q 0,0 3,17" fill="none" stroke="#F5D0FE" strokeWidth="2.5" />
-                      <rect x="-4" y="22" width="8" height="5.5" rx="1.2" fill="#78350F" />
-                    </g>
-                  </g>
-                </g>
-
-                {/* Teal Plane Orbit */}
-                <g
-                  className="animate-orbit-spin"
-                  style={{
-                    transformOrigin: `${cx}px ${cy}px`,
-                    animationDuration: '26s',
-                    animationDelay: '-8s',
-                    animationPlayState: effectivePaused ? 'paused' : 'running',
-                  }}
-                >
-                  <g transform={`translate(${cx}, ${cy + R + 38})`}>
-                    <path d="M-36,4 Q-14,2 0,0" stroke="#FFFFFF" strokeOpacity="0.85" strokeWidth="2" strokeDasharray="3,3" fill="none" />
-                    <polygon points="4,0 -14,-6 -10,0 -14,6" fill="#FFFFFF" stroke="#0284C7" strokeWidth="1.4" />
-                  </g>
-                </g>
-
-                {/* Bright Ocean Globe */}
-                <circle
-                  cx={cx}
-                  cy={cy}
-                  r={R}
-                  fill="url(#planetOceanLight)"
-                  stroke="#FFFFFF"
-                  strokeOpacity={0.7}
-                  strokeWidth="2.5"
-                />
-
-                <g clipPath="url(#globeClip)">
-                  {graticulePaths.map((d, idx) => (
-                    <path
-                      key={idx}
-                      d={d}
-                      fill="none"
-                      stroke="#FFFFFF"
-                      strokeOpacity={0.2}
-                      strokeWidth="1"
-                    />
-                  ))}
-
-                  {projectedIslands.map(({ sec, geo, x, y, z, starStats }) => {
-                    const px = cx + x;
-                    const py = cy + y;
-                    const scale = 0.65 + Math.max(0, z) * 0.58;
-                    const opacity = z < 0 ? 0.38 : 0.72 + z * 0.28;
-                    const isHov = hoveredSector === sec.id;
-
-                    return (
-                      <g
-                        key={sec.id}
-                        transform={`translate(${px}, ${py}) scale(${scale})`}
-                        style={{ opacity }}
-                        className="cursor-pointer"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (!dragRef.current.moved) {
-                            handleEnterSector(sec.id);
-                          }
-                        }}
-                        onMouseEnter={() => handleHoverPlanet(sec.id)}
-                        onMouseLeave={() => handleHoverPlanet(null)}
-                      >
-                        {/* Pulsing Island Beacon Halo */}
-                        <ellipse
-                          cx="0"
-                          cy="0"
-                          rx="38"
-                          ry="26"
-                          fill="none"
-                          stroke={isHov ? '#FFFFFF' : geo.shoreFill}
-                          strokeWidth={isHov ? 2.5 : 1.5}
-                          className="animate-island-beacon"
-                        />
-                        <ellipse cx="0" cy="0" rx="34" ry="23" fill={geo.shoreFill} fillOpacity="0.4" />
-                        <ellipse cx="0" cy="0" rx="26" ry="18" fill={geo.shoreFill} />
-                        <path
-                          d="M -20,-4 Q -10,-16 8,-12 Q 22,-8 20,5 Q 14,15 -4,14 Q -22,12 -20,-4 Z"
-                          fill={geo.landFill}
-                          stroke={isHov ? '#FFFFFF' : 'rgba(15,23,42,0.35)'}
-                          strokeWidth={isHov ? 2.6 : 1}
-                        />
-                        <polygon points="-7,4 0,-9 7,4" fill="#475569" />
-                        <circle cx="10" cy="-3" r="3.2" fill="#15803D" />
-                        <circle cx="-11" cy="-2" r="2.6" fill="#16A34A" />
-
-                        {z > 0.1 && (
-                          <g transform="translate(0, -30)">
-                            <rect
-                              x="-52"
-                              y="-15"
-                              width="104"
-                              height="24"
-                              rx="12"
-                              fill="#FFFFFF"
-                              stroke={geo.color}
-                              strokeWidth={isHov ? 2.5 : 1.5}
-                            />
-                            <polygon points="-5,9 5,9 0,15" fill="#FFFFFF" />
-                            <text
-                              x="0"
-                              y="1"
-                              textAnchor="middle"
-                              fill="#0F172A"
-                              fontSize="11"
-                              fontWeight="700"
-                            >
-                              {sec.shortTitle}
-                              {starStats.allDone ? ' ★' : ''}
-                            </text>
-                          </g>
-                        )}
-                      </g>
-                    );
-                  })}
-                </g>
-              </svg>
-
-              <p className="mt-1 text-center text-xs text-slate-600">
-                雲海光環與飛艇持續巡航中！按住拖曳可手動轉動星球，點擊島嶼座標即刻出發
-              </p>
-            </div>
-          )}
-        </div>
-
-        {/* Right ~30% Streamlined Control Rail (col-span-4) */}
-        <div className="space-y-4 lg:col-span-4">
-          <div>
-            <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 xl:text-3xl dark:text-white">
-              {isDark ? '星際數學太陽系' : '明亮數學學習星球'}
-            </h1>
-            <p className="mt-1 text-xs leading-relaxed text-slate-600 md:text-sm dark:text-slate-300">
-              八大升國中銜接主題，點選星球完成簡報、熱身、微關卡與創意對戰！
-            </p>
-          </div>
-
-          {/* Compact 2x2 Progress Telemetry */}
-          <div className="grid grid-cols-2 gap-2.5">
-            <div className="rounded-xl border border-slate-200 bg-white/95 px-3 py-2.5 shadow-sm dark:border-slate-800 dark:bg-[#0D1424] dark:shadow-none">
-              <div className="flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400">
-                <Star className="h-3 w-3 text-amber-500" aria-hidden="true" />
-                <span>課程星星</span>
-              </div>
-              <div className="mt-0.5 font-mono text-lg font-bold text-slate-900 tabular-nums dark:text-white">
-                {stats.stars} <span className="text-xs font-normal text-slate-500">/ {totalSystemStars}</span>
-              </div>
-            </div>
-
-            <div className="rounded-xl border border-slate-200 bg-white/95 px-3 py-2.5 shadow-sm dark:border-slate-800 dark:bg-[#0D1424] dark:shadow-none">
-              <div className="flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400">
-                <Flag className="h-3 w-3 text-emerald-500" aria-hidden="true" />
-                <span>星球金旗</span>
-              </div>
-              <div className="mt-0.5 font-mono text-lg font-bold text-slate-900 tabular-nums dark:text-white">
-                {stats.flags} <span className="text-xs font-normal text-slate-500">/ 8</span>
-              </div>
-            </div>
-
-            <div className="rounded-xl border border-slate-200 bg-white/95 px-3 py-2.5 shadow-sm dark:border-slate-800 dark:bg-[#0D1424] dark:shadow-none">
-              <div className="flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400">
-                <Trophy className="h-3 w-3 text-sky-600 dark:text-cyan-400" aria-hidden="true" />
-                <span>探索積分</span>
-              </div>
-              <div className="mt-0.5 font-mono text-lg font-bold text-slate-900 tabular-nums dark:text-white">
-                {profile.totalScore}
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={onOpenWrongModal}
-              className="rounded-xl border border-rose-200 bg-rose-50/90 px-3 py-2.5 text-left shadow-sm transition-colors hover:bg-rose-100 dark:border-rose-500/30 dark:bg-rose-500/10 dark:shadow-none dark:hover:bg-rose-500/20"
-            >
-              <div className="flex items-center gap-1 text-[11px] text-rose-700 dark:text-rose-300">
-                <BookMarked className="h-3 w-3" aria-hidden="true" />
-                <span>錯題待複習</span>
-              </div>
-              <div className="mt-0.5 font-mono text-lg font-bold text-rose-800 tabular-nums dark:text-rose-200">
-                {wrongCount} <span className="text-xs font-normal">題</span>
-              </div>
-            </button>
-          </div>
-
-          {/* Streamlined Single-Column 8-Planet Quick List */}
-          <div className="space-y-2">
-            {SECTORS.map((sec) => {
-              const geo = PLANET_META[sec.id];
-              const starStats = getSectorStarStats(sec, profile.sectors[sec.id]);
-              const isHov = hoveredSector === sec.id;
-
-              return (
-                <button
-                  key={sec.id}
-                  type="button"
-                  onMouseEnter={() => focusIslandOnMap(sec.id)}
-                  onMouseLeave={() => setHoveredSector(null)}
-                  onFocus={() => focusIslandOnMap(sec.id)}
-                  onBlur={() => setHoveredSector(null)}
-                  onClick={() => handleEnterSector(sec.id)}
-                  className={`group flex w-full items-center justify-between gap-3 rounded-xl border px-3.5 py-2.5 text-left transition-all ${
-                    isHov
-                      ? 'border-sky-500 bg-white shadow-md dark:border-cyan-400 dark:bg-[#111C33] dark:shadow-none'
-                      : 'border-slate-200/90 bg-white/90 shadow-sm hover:border-slate-300 dark:border-slate-800 dark:bg-[#0D1424] dark:shadow-none dark:hover:border-slate-700'
-                  }`}
-                >
-                  <div className="flex min-w-0 items-center gap-2.5">
-                    <span
-                      className="h-3 w-3 shrink-0 rounded-full"
-                      style={{
-                        backgroundColor: geo.color,
-                        boxShadow: isDark ? `0 0 8px ${geo.glowColor}` : 'none',
-                      }}
-                      aria-hidden="true"
-                    />
-                    <span className="truncate text-sm font-bold text-slate-900 dark:text-white">
-                      {sec.shortTitle}
-                    </span>
-                    <span className="shrink-0 font-mono text-xs font-semibold text-amber-600 tabular-nums dark:text-amber-300">
-                      ★{starStats.earned}/{starStats.total}
-                    </span>
-                  </div>
-
-                  <span
-                    className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold whitespace-nowrap transition-transform group-hover:translate-x-0.5"
-                    style={{ color: isDark ? '#7DD3FC' : geo.color }}
+                  <button
+                    key={sec.id}
+                    type="button"
+                    data-sfx="custom"
+                    onMouseEnter={() => setHoveredSector(sec.id)}
+                    onMouseLeave={() => setHoveredSector((p) => (p === sec.id ? null : p))}
+                    onClick={() => handleDockPlanetClick(sec.id)}
+                    className={`inline-flex shrink-0 items-center gap-1.5 rounded-xl border px-2.5 py-1.5 text-[11px] font-bold transition-all ${
+                      isFocused
+                        ? 'border-cyan-400 bg-sky-500/20 text-sky-900 shadow-sm dark:text-white'
+                        : isNext
+                        ? 'border-amber-400/70 bg-amber-500/10 text-slate-900 dark:text-white'
+                        : 'border-slate-300/60 bg-white/60 text-slate-800 hover:border-sky-400 dark:border-slate-700/70 dark:bg-slate-900/65 dark:text-slate-200'
+                    }`}
                   >
-                    <span>出發</span>
-                    <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
-                  </span>
-                </button>
-              );
-            })}
+                    <span
+                      className="h-2 w-2 rounded-full"
+                      style={{ backgroundColor: meta.color }}
+                    />
+                    <span className="font-mono text-[10px] opacity-75">{sec.code}</span>
+                    <span>{sec.shortTitle}</span>
+                    {isDone && (
+                      <Star className="h-3 w-3 fill-emerald-500 text-emerald-500" aria-hidden="true" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

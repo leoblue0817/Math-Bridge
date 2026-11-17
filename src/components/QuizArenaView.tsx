@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { CheckCircle2, Eye, RotateCcw, XCircle } from 'lucide-react';
 import { SectorData } from '../data/sectors';
 import { AppMode, SectorProgress } from '../types';
-import { MathDiagram } from './MathDiagrams';
+import { QuestionMedia } from './QuestionMedia';
 
 interface QuizArenaViewProps {
   sector: SectorData;
@@ -91,18 +91,18 @@ export function QuizArenaView({
         </span>
       </div>
 
-      {/* 題目與幾何/立體配圖 (配圖保留深色畫布以保持 SVG 高對比線條) */}
+      {/* 題目與幾何/立體配圖 */}
       <div className="grid grid-cols-1 items-center gap-6 rounded-xl border border-slate-200 bg-slate-50 p-5 lg:grid-cols-12 dark:border-slate-800 dark:bg-[#080D1A]">
         <div
           className={`${
-            currentQ.diagramId ? 'lg:col-span-7' : 'lg:col-span-12'
+            currentQ.diagramId || currentQ.imageUrl ? 'lg:col-span-7' : 'lg:col-span-12'
           } text-base leading-relaxed font-medium text-slate-900 md:text-lg dark:text-white`}
         >
           {currentQ.q}
         </div>
-        {currentQ.diagramId && (
-          <div className="rounded-xl border border-slate-700 bg-slate-900 p-3 lg:col-span-5 dark:border-slate-800 dark:bg-slate-950/70">
-            <MathDiagram id={currentQ.diagramId} />
+        {(currentQ.diagramId || currentQ.imageUrl) && (
+          <div className="lg:col-span-5">
+            <QuestionMedia diagramId={currentQ.diagramId} imageUrl={currentQ.imageUrl} />
           </div>
         )}
       </div>
@@ -133,6 +133,7 @@ export function QuizArenaView({
             <button
               key={optIdx}
               type="button"
+              data-sfx="custom"
               disabled={hasAnswered}
               onClick={() => onAnswer(progress.quizIdx, optIdx, isCorrect)}
               className={`flex items-center justify-between gap-3 rounded-xl border px-4 py-3.5 text-left text-sm font-medium transition-colors md:text-base ${cls}`}

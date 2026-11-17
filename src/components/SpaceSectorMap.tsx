@@ -1,6 +1,6 @@
 import { CheckCircle2, Circle, Globe2, Monitor, Rocket, SlidersHorizontal, User } from 'lucide-react';
 import { SECTORS, getSectorStarStats, getTotalSystemStars } from '../data/sectors';
-import { AppMode, ProfileRecord, SectorId, ThemeMode } from '../types';
+import { AppMode, ProfileRecord, SectorId, ThemeMode, isDarkTheme } from '../types';
 
 interface SpaceSectorMapProps {
   profile: ProfileRecord;
@@ -24,7 +24,7 @@ function SectorOrbitIcon({ sectorId, theme }: { sectorId: SectorId; theme: Theme
     s8: '#2563EB',
   };
   const stroke = accentMap[sectorId];
-  const isDark = theme === 'dark';
+  const isDark = isDarkTheme(theme);
 
   return (
     <svg width="42" height="42" viewBox="0 0 42 42" aria-hidden="true" className="shrink-0">
@@ -75,18 +75,18 @@ export function SpaceSectorMap({
   const energyPct = Math.round((completedTasksCount / totalTasks) * 100);
 
   return (
-    <div className="mx-auto max-w-7xl space-y-8 px-6 pt-8">
+    <div className="mx-auto max-w-[1440px] space-y-8 px-4 pt-6 sm:px-6">
       {/* Cockpit Hero & Classroom Mode Toolbar */}
-      <section className="rounded-2xl border border-slate-200 bg-white/95 p-6 shadow-sm md:p-8 dark:border-slate-800 dark:bg-[#0D1424]/95 dark:shadow-none">
+      <section className="glass-hud-panel rounded-[28px] p-6 md:p-8">
         <div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-center">
           <div className="max-w-2xl space-y-2">
-            <div className="text-xs font-semibold text-sky-700 dark:text-cyan-400">
+            <div className="text-xs font-bold text-sky-700 dark:text-cyan-400">
               小六升國一銜接數學 · 八區航圖總覽（學生：{profile.name}）
             </div>
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900 md:text-3xl dark:text-white">
+            <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 md:text-3xl dark:text-white">
               探索 8 大數學星球，完成簡報、熱身配對、小節微關卡與創意對戰
             </h1>
-            <p className="text-sm leading-relaxed text-slate-600 md:text-base dark:text-slate-300">
+            <p className="text-sm leading-relaxed text-slate-700 md:text-base dark:text-slate-300">
               每個星域都配有課堂簡報、觀念連連看或幾何圖形佈置熱身、2 至 3 個小節微關卡，以及點格棋、二進位魔術卡、黃黑灰摺紙、數迴、KenKen 數獨、數方、速算與立體積木等實戰遊戲。
             </p>
           </div>
@@ -96,7 +96,7 @@ export function SpaceSectorMap({
               <button
                 type="button"
                 onClick={onSwitchToPlanet}
-                className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-xs font-semibold text-slate-700 hover:border-sky-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                className="glass-hud-tile inline-flex items-center gap-1.5 whitespace-nowrap rounded-xl px-3.5 py-2 text-xs font-bold text-slate-800 hover:border-sky-400 dark:text-slate-100"
               >
                 <Globe2 className="h-3.5 w-3.5 text-sky-600 dark:text-cyan-400" aria-hidden="true" />
                 <span>返回太陽系星圖</span>
@@ -104,21 +104,21 @@ export function SpaceSectorMap({
               <button
                 type="button"
                 onClick={onOpenProgressModal}
-                className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-xs font-semibold text-slate-700 hover:border-sky-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                className="glass-hud-tile inline-flex items-center gap-1.5 whitespace-nowrap rounded-xl px-3.5 py-2 text-xs font-bold text-slate-800 hover:border-sky-400 dark:text-slate-100"
               >
                 <SlidersHorizontal className="h-3.5 w-3.5" aria-hidden="true" />
                 <span>進度管理</span>
               </button>
             </div>
 
-            <div className="inline-flex rounded-xl border border-slate-200 bg-slate-100 p-1 dark:border-slate-700 dark:bg-[#080D1A]">
+            <div className="inline-flex rounded-xl border border-white/60 bg-white/50 p-1 backdrop-blur-md dark:border-slate-700/80 dark:bg-slate-900/60">
               <button
                 type="button"
                 onClick={() => onChangeMode('student')}
-                className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg px-3.5 py-2 text-xs font-semibold transition-colors ${
+                className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg px-3.5 py-2 text-xs font-bold transition-colors ${
                   mode === 'student'
-                    ? 'bg-sky-600 text-white dark:bg-cyan-500 dark:text-slate-950'
-                    : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'
+                    ? 'bg-sky-600 text-white shadow-sm dark:bg-cyan-500 dark:text-slate-950'
+                    : 'text-slate-700 hover:text-slate-950 dark:text-slate-300 dark:hover:text-white'
                 }`}
               >
                 <User className="h-3.5 w-3.5" aria-hidden="true" />
@@ -127,10 +127,10 @@ export function SpaceSectorMap({
               <button
                 type="button"
                 onClick={() => onChangeMode('projector')}
-                className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg px-3.5 py-2 text-xs font-semibold transition-colors ${
+                className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg px-3.5 py-2 text-xs font-bold transition-colors ${
                   mode === 'projector'
-                    ? 'bg-amber-500 text-white dark:bg-amber-400 dark:text-slate-950'
-                    : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'
+                    ? 'bg-amber-500 text-white shadow-sm dark:bg-amber-400 dark:text-slate-950'
+                    : 'text-slate-700 hover:text-slate-950 dark:text-slate-300 dark:hover:text-white'
                 }`}
               >
                 <Monitor className="h-3.5 w-3.5" aria-hidden="true" />
@@ -141,31 +141,31 @@ export function SpaceSectorMap({
         </div>
 
         {/* 4-Column Cockpit Telemetry Strip */}
-        <div className="mt-6 grid grid-cols-2 gap-4 border-t border-slate-200 pt-6 md:grid-cols-4 dark:border-slate-800">
-          <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3.5 dark:border-slate-800/90 dark:bg-[#080D1A]">
-            <div className="text-xs text-slate-500 dark:text-slate-400">已通關星域</div>
-            <div className="mt-1 font-mono text-2xl font-bold text-slate-900 tabular-nums dark:text-white">
+        <div className="mt-6 grid grid-cols-2 gap-4 border-t border-white/50 pt-6 md:grid-cols-4 dark:border-slate-700/50">
+          <div className="glass-hud-tile rounded-2xl px-4 py-3.5">
+            <div className="text-xs font-semibold text-slate-600 dark:text-slate-400">已通關星域</div>
+            <div className="mt-1 font-mono text-2xl font-extrabold text-slate-900 tabular-nums dark:text-white">
               {clearedSectorsCount} / 8
             </div>
           </div>
 
-          <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3.5 dark:border-slate-800/90 dark:bg-[#080D1A]">
-            <div className="text-xs text-slate-500 dark:text-slate-400">已收集星星</div>
-            <div className="mt-1 font-mono text-2xl font-bold text-sky-700 tabular-nums dark:text-cyan-300">
+          <div className="glass-hud-tile rounded-2xl px-4 py-3.5">
+            <div className="text-xs font-semibold text-slate-600 dark:text-slate-400">已收集星星</div>
+            <div className="mt-1 font-mono text-2xl font-extrabold text-sky-700 tabular-nums dark:text-cyan-300">
               {completedTasksCount} / {totalTasks}
             </div>
           </div>
 
-          <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3.5 dark:border-slate-800/90 dark:bg-[#080D1A]">
-            <div className="text-xs text-slate-500 dark:text-slate-400">領航艦推進能源</div>
-            <div className="mt-1 font-mono text-2xl font-bold text-emerald-700 tabular-nums dark:text-emerald-300">
+          <div className="glass-hud-tile rounded-2xl px-4 py-3.5">
+            <div className="text-xs font-semibold text-slate-600 dark:text-slate-400">領航艦推進能源</div>
+            <div className="mt-1 font-mono text-2xl font-extrabold text-emerald-700 tabular-nums dark:text-emerald-300">
               {energyPct}%
             </div>
           </div>
 
-          <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3.5 dark:border-slate-800/90 dark:bg-[#080D1A]">
-            <div className="text-xs text-slate-500 dark:text-slate-400">累積探索積分</div>
-            <div className="mt-1 font-mono text-2xl font-bold text-amber-600 tabular-nums dark:text-amber-300">
+          <div className="glass-hud-tile rounded-2xl px-4 py-3.5">
+            <div className="text-xs font-semibold text-slate-600 dark:text-slate-400">累積探索積分</div>
+            <div className="mt-1 font-mono text-2xl font-extrabold text-amber-600 tabular-nums dark:text-amber-300">
               {profile.totalScore} 分
             </div>
           </div>
@@ -197,10 +197,10 @@ export function SpaceSectorMap({
             return (
               <article
                 key={sec.id}
-                className={`flex flex-col justify-between rounded-2xl border p-5 shadow-sm transition-colors dark:shadow-none ${
+                className={`glass-hud-panel iso-node-card flex flex-col justify-between rounded-3xl p-5 ${
                   allDone
-                    ? 'border-emerald-400/60 bg-emerald-50/40 dark:border-emerald-500/40 dark:bg-[#0D1626]'
-                    : 'border-slate-200 bg-white hover:border-sky-400 dark:border-slate-800 dark:bg-[#0D1424] dark:hover:border-cyan-500/50'
+                    ? 'border-emerald-400/70'
+                    : 'hover:border-sky-400 dark:hover:border-cyan-400/70'
                 }`}
               >
                 <div>

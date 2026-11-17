@@ -1,18 +1,20 @@
 import { useMemo, useState } from 'react';
 import { CheckCircle2, X, XCircle } from 'lucide-react';
-import { SECTORS, getSectorQuestionById } from '../data/sectors';
+import { SECTORS, SectorData, getSectorQuestionById } from '../data/sectors';
 import { ProfileRecord, SectorId } from '../types';
 import { soundEngine } from '../utils/soundEngine';
-import { MathDiagram } from './MathDiagrams';
+import { QuestionMedia } from './QuestionMedia';
 
 interface WrongReviewModalProps {
   profile: ProfileRecord;
+  sectorsSource?: SectorData[];
   onClose: () => void;
   onResolveWrong: (sectorId: SectorId, qId: string, qIdx: number) => void;
 }
 
 export function WrongReviewModal({
   profile,
+  sectorsSource = SECTORS,
   onClose,
   onResolveWrong,
 }: WrongReviewModalProps) {
@@ -24,12 +26,13 @@ export function WrongReviewModal({
       qIdx: number;
       q: string;
       diagramId?: string;
+      imageUrl?: string;
       options: string[];
       ans: number;
       exp: string;
     }[] = [];
 
-    SECTORS.forEach((sec) => {
+    sectorsSource.forEach((sec) => {
       const sp = profile.sectors[sec.id];
       const seenIds = new Set<string>();
 
@@ -66,7 +69,7 @@ export function WrongReviewModal({
     });
 
     return list;
-  }, [profile]);
+  }, [profile, sectorsSource]);
 
   const [pickedMap, setPickedMap] = useState<Record<string, number>>({});
 
@@ -126,10 +129,8 @@ export function WrongReviewModal({
                   </div>
                   <div className="text-sm font-semibold leading-relaxed md:text-base">{item.q}</div>
 
-                  {item.diagramId && (
-                    <div className="rounded-xl border border-slate-200 bg-slate-900 p-3 dark:border-slate-800">
-                      <MathDiagram id={item.diagramId} />
-                    </div>
+                  {(item.diagramId || item.imageUrl) && (
+                    <QuestionMedia diagramId={item.diagramId} imageUrl={item.imageUrl} />
                   )}
 
                   <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -152,6 +153,7 @@ export function WrongReviewModal({
                         <button
                           key={optIdx}
                           type="button"
+                          data-sfx="custom"
                           onClick={() => {
                             soundEngine.unlockIfNeeded();
                             setPickedMap((prev) => ({ ...prev, [key]: optIdx }));

@@ -1,4 +1,4 @@
-import { SectorId, SectorProgress } from '../types';
+import { CustomQuestionRecord, SectorId, SectorProgress } from '../types';
 
 export interface SlideBlank {
   prompt: string;
@@ -21,6 +21,7 @@ export interface QuizQuestion {
   id: string;
   q: string;
   diagramId?: string;
+  imageUrl?: string;
   options: string[];
   ans: number;
   exp: string;
@@ -121,10 +122,79 @@ export function getTotalSystemStars(sectors: SectorData[]): number {
   return sectors.reduce((acc, s) => acc + 3 + s.subLessons.length, 0);
 }
 
+export function getMergedSectors(customQuestions: CustomQuestionRecord[] = []): SectorData[] {
+  if (!customQuestions || customQuestions.length === 0) return SECTORS;
+
+  const bySector = new Map<SectorId, CustomQuestionRecord[]>();
+  customQuestions.forEach((cq) => {
+    const arr = bySector.get(cq.sectorId) ?? [];
+    arr.push(cq);
+    bySector.set(cq.sectorId, arr);
+  });
+
+  return SECTORS.map((sec) => {
+    const extras = bySector.get(sec.id);
+    if (!extras || extras.length === 0) return sec;
+
+    const mergedQuizzes: QuizQuestion[] = [...sec.quizzes];
+    const idToIdx = new Map<string, number>();
+    mergedQuizzes.forEach((q, idx) => idToIdx.set(q.id, idx));
+
+    const extraSubMap = new Map<string, string[]>();
+
+    extras.forEach((item) => {
+      const normalized: QuizQuestion = {
+        id: item.id,
+        q: item.q,
+        diagramId: item.diagramId || undefined,
+        imageUrl: item.imageUrl || undefined,
+        options: item.options,
+        ans: item.ans,
+        exp: item.exp,
+      };
+      const existingIdx = idToIdx.get(item.id);
+      if (existingIdx !== undefined) {
+        mergedQuizzes[existingIdx] = normalized;
+      } else {
+        const newIdx = mergedQuizzes.length;
+        mergedQuizzes.push(normalized);
+        idToIdx.set(item.id, newIdx);
+      }
+
+      const subKey = item.subId || sec.subLessons[0]?.id;
+      if (subKey) {
+        const list = extraSubMap.get(subKey) ?? [];
+        if (!list.includes(item.id)) list.push(item.id);
+        extraSubMap.set(subKey, list);
+      }
+    });
+
+    const mergedSubs = sec.subLessons.map((sub) => {
+      const extraIds = extraSubMap.get(sub.id);
+      if (!extraIds || extraIds.length === 0) return sub;
+      const combinedIds = [...sub.questionIds];
+      extraIds.forEach((eid) => {
+        if (!combinedIds.includes(eid)) combinedIds.push(eid);
+      });
+      return {
+        ...sub,
+        questionIds: combinedIds,
+      };
+    });
+
+    return {
+      ...sec,
+      quizzes: mergedQuizzes,
+      subLessons: mergedSubs,
+    };
+  });
+}
+
 export function findQuestionById(
-  qId: string
+  qId: string,
+  sectorsSource: SectorData[] = SECTORS
 ): { sector: SectorData; quiz: QuizQuestion; qIdx: number } | null {
-  for (const sector of SECTORS) {
+  for (const sector of sectorsSource) {
     const qIdx = sector.quizzes.findIndex((q) => q.id === qId);
     if (qIdx >= 0) {
       return { sector, quiz: sector.quizzes[qIdx], qIdx };
@@ -133,20 +203,113 @@ export function findQuestionById(
   return null;
 }
 
-export function sampleBattleQuestionIds(
-  scope: 'all' | SectorId,
-  count: number
-): string[] {
-  const pool =
-    scope === 'all'
-      ? SECTORS.flatMap((s) => s.quizzes.map((q) => q.id))
-      : (SECTORS.find((s) => s.id === scope)?.quizzes.map((q) => q.id) ?? []);
-  const copy = [...pool];
+export interface BattleQuestionSnapshot {
+  qId: string;
+  sectorId: SectorId;
+  subId: string;
+  q: string;
+  options: string[];
+  ans: number;
+  exp: string;
+  diagramId: string;
+  imageUrl: string;
+}
+
+export function getScopeReadableLabel(scope: string, sectorsSource: SectorData[] = SECTORS): string {
+  if (scope === 'all') return '八大主題綜合搶答賽';
+  const sector = sectorsSource.find((s) => s.id === scope);
+  if (sector) return `${sector.shortTitle} · ${sector.title}`;
+  for (const sec of sectorsSource) {
+    const sub = sec.subLessons.find((sl) => sl.id === scope);
+    if (sub) return `${sec.shortTitle} · ${sub.code} ${sub.title}`;
+  }
+  return scope;
+}
+
+export function sampleBattleQuestions(
+  scope: string,
+  count: number,
+  customQuestions: CustomQuestionRecord[] = []
+): BattleQuestionSnapshot[] {
+  const merged = getMergedSectors(customQuestions);
+  const pool: BattleQuestionSnapshot[] = [];
+
+  if (scope === 'all') {
+    merged.forEach((sec) => {
+      sec.subLessons.forEach((sub) => {
+        getSubLessonQuestions(sec, sub).forEach((quiz) => {
+          pool.push({
+            qId: quiz.id,
+            sectorId: sec.id,
+            subId: sub.id,
+            q: quiz.q,
+            options: quiz.options.slice(0, 4),
+            ans: quiz.ans,
+            exp: quiz.exp,
+            diagramId: quiz.diagramId ?? '',
+            imageUrl: quiz.imageUrl ?? '',
+          });
+        });
+      });
+    });
+  } else if (/^s[1-8]$/.test(scope)) {
+    const sec = merged.find((s) => s.id === scope);
+    if (sec) {
+      sec.subLessons.forEach((sub) => {
+        getSubLessonQuestions(sec, sub).forEach((quiz) => {
+          pool.push({
+            qId: quiz.id,
+            sectorId: sec.id,
+            subId: sub.id,
+            q: quiz.q,
+            options: quiz.options.slice(0, 4),
+            ans: quiz.ans,
+            exp: quiz.exp,
+            diagramId: quiz.diagramId ?? '',
+            imageUrl: quiz.imageUrl ?? '',
+          });
+        });
+      });
+    }
+  } else {
+    for (const sec of merged) {
+      const sub = sec.subLessons.find((sl) => sl.id === scope);
+      if (sub) {
+        getSubLessonQuestions(sec, sub).forEach((quiz) => {
+          pool.push({
+            qId: quiz.id,
+            sectorId: sec.id,
+            subId: sub.id,
+            q: quiz.q,
+            options: quiz.options.slice(0, 4),
+            ans: quiz.ans,
+            exp: quiz.exp,
+            diagramId: quiz.diagramId ?? '',
+            imageUrl: quiz.imageUrl ?? '',
+          });
+        });
+        break;
+      }
+    }
+  }
+
+  // Deduplicate by qId
+  const uniqueMap = new Map<string, BattleQuestionSnapshot>();
+  pool.forEach((item) => uniqueMap.set(item.qId, item));
+  const copy = Array.from(uniqueMap.values());
+
   for (let i = copy.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [copy[i], copy[j]] = [copy[j], copy[i]];
   }
   return copy.slice(0, Math.min(count, copy.length));
+}
+
+export function sampleBattleQuestionIds(
+  scope: 'all' | SectorId,
+  count: number
+): string[] {
+  return sampleBattleQuestions(scope, count).map((q) => q.qId);
 }
 
 export const SECTORS: SectorData[] = [

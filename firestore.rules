@@ -31,22 +31,18 @@ service cloud.firestore {
         'roomCode',
         'hostUid',
         'hostName',
-        'guestUid',
-        'guestName',
         'sectorScope',
-        'questionIds',
+        'scopeLabel',
+        'questionCount',
         'questionSeconds',
         'status',
         'currentIndex',
-        'hostScore',
-        'guestScore',
-        'hostAnsweredCount',
-        'guestAnsweredCount',
-        'hostCorrectCount',
-        'guestCorrectCount',
-        'hostLastCorrect',
-        'guestLastCorrect',
+        'answeredTotal',
+        'playerTotal',
+        'optionCounts',
+        'leaderboard',
         'winnerUid',
+        'winnerName',
         'createdAt',
         'updatedAt'
       ]) &&
@@ -54,22 +50,18 @@ service cloud.firestore {
         'roomCode',
         'hostUid',
         'hostName',
-        'guestUid',
-        'guestName',
         'sectorScope',
-        'questionIds',
+        'scopeLabel',
+        'questionCount',
         'questionSeconds',
         'status',
         'currentIndex',
-        'hostScore',
-        'guestScore',
-        'hostAnsweredCount',
-        'guestAnsweredCount',
-        'hostCorrectCount',
-        'guestCorrectCount',
-        'hostLastCorrect',
-        'guestLastCorrect',
+        'answeredTotal',
+        'playerTotal',
+        'optionCounts',
+        'leaderboard',
         'winnerUid',
+        'winnerName',
         'createdAt',
         'updatedAt'
       ]) &&
@@ -77,122 +69,252 @@ service cloud.firestore {
       data.roomCode == roomId &&
       data.hostUid is string && data.hostUid.size() >= 1 && data.hostUid.size() <= 128 &&
       data.hostName is string && data.hostName.size() >= 1 && data.hostName.size() <= 32 &&
-      data.guestUid is string && data.guestUid.size() <= 128 &&
-      data.guestName is string && data.guestName.size() <= 32 &&
-      data.sectorScope is string && data.sectorScope.size() <= 8 && data.sectorScope.matches('^(all|s[1-8])$') &&
-      data.questionIds is list && data.questionIds.size() >= 3 && data.questionIds.size() <= 10 && data.questionIds[0] is string &&
+      data.sectorScope is string && data.sectorScope.size() <= 12 && data.sectorScope.matches('^(all|s[1-8]|s[1-8]-[1-3])$') &&
+      data.scopeLabel is string && data.scopeLabel.size() >= 1 && data.scopeLabel.size() <= 64 &&
+      data.questionCount is int && data.questionCount >= 3 && data.questionCount <= 15 &&
       data.questionSeconds is int && data.questionSeconds >= 10 && data.questionSeconds <= 60 &&
-      data.status in ['waiting', 'playing', 'finished'] &&
-      data.currentIndex is int && data.currentIndex >= 0 && data.currentIndex <= data.questionIds.size() &&
-      data.hostScore is int && data.hostScore >= 0 && data.hostScore <= 5000 &&
-      data.guestScore is int && data.guestScore >= 0 && data.guestScore <= 5000 &&
-      data.hostAnsweredCount is int && data.hostAnsweredCount >= 0 && data.hostAnsweredCount <= data.questionIds.size() &&
-      data.guestAnsweredCount is int && data.guestAnsweredCount >= 0 && data.guestAnsweredCount <= data.questionIds.size() &&
-      data.hostCorrectCount is int && data.hostCorrectCount >= 0 && data.hostCorrectCount <= data.questionIds.size() &&
-      data.guestCorrectCount is int && data.guestCorrectCount >= 0 && data.guestCorrectCount <= data.questionIds.size() &&
-      data.hostLastCorrect is bool &&
-      data.guestLastCorrect is bool &&
+      data.status in ['waiting', 'question', 'reveal', 'finished'] &&
+      data.currentIndex is int && data.currentIndex >= 0 && data.currentIndex < data.questionCount &&
+      data.answeredTotal is int && data.answeredTotal >= 0 && data.answeredTotal <= 500 &&
+      data.playerTotal is int && data.playerTotal >= 0 && data.playerTotal <= 500 &&
+      data.optionCounts is list && data.optionCounts.size() == 4 && data.optionCounts[0] is int &&
+      data.leaderboard is list && data.leaderboard.size() <= 30 &&
+      (data.leaderboard.size() == 0 || data.leaderboard[0] is map) &&
       data.winnerUid is string && data.winnerUid.size() <= 128 &&
+      data.winnerName is string && data.winnerName.size() <= 32 &&
+      data.createdAt is timestamp &&
+      data.updatedAt is timestamp;
+    }
+
+    function isValidBattlePlayer(data, roomId, playerUid) {
+      return data.keys().hasAll([
+        'uid',
+        'roomCode',
+        'hostUid',
+        'name',
+        'score',
+        'streak',
+        'correctCount',
+        'answeredCount',
+        'lastRoundIndex',
+        'lastOption',
+        'lastCorrect',
+        'lastPoints',
+        'joinedAt',
+        'updatedAt'
+      ]) &&
+      data.keys().hasOnly([
+        'uid',
+        'roomCode',
+        'hostUid',
+        'name',
+        'score',
+        'streak',
+        'correctCount',
+        'answeredCount',
+        'lastRoundIndex',
+        'lastOption',
+        'lastCorrect',
+        'lastPoints',
+        'joinedAt',
+        'updatedAt'
+      ]) &&
+      data.uid is string && data.uid == playerUid && data.uid == request.auth.uid &&
+      isValidRoomCode(data.roomCode) && data.roomCode == roomId &&
+      data.hostUid is string && data.hostUid.size() >= 1 && data.hostUid.size() <= 128 &&
+      data.name is string && data.name.size() >= 1 && data.name.size() <= 32 &&
+      data.score is int && data.score >= 0 && data.score <= 50000 &&
+      data.streak is int && data.streak >= 0 && data.streak <= 20 &&
+      data.correctCount is int && data.correctCount >= 0 && data.correctCount <= 20 &&
+      data.answeredCount is int && data.answeredCount >= 0 && data.answeredCount <= 20 &&
+      data.lastRoundIndex is int && data.lastRoundIndex >= -1 && data.lastRoundIndex <= 20 &&
+      data.lastOption is int && data.lastOption >= -1 && data.lastOption <= 3 &&
+      data.lastCorrect is bool &&
+      data.lastPoints is int && data.lastPoints >= 0 && data.lastPoints <= 2000 &&
+      data.joinedAt is timestamp &&
+      data.updatedAt is timestamp;
+    }
+
+    function isValidBattleQuestion(data, roomId, qIdx) {
+      return data.keys().hasAll([
+        'roomCode',
+        'hostUid',
+        'index',
+        'qId',
+        'sectorId',
+        'subId',
+        'q',
+        'options',
+        'ans',
+        'exp',
+        'diagramId',
+        'imageUrl',
+        'createdAt'
+      ]) &&
+      data.keys().hasOnly([
+        'roomCode',
+        'hostUid',
+        'index',
+        'qId',
+        'sectorId',
+        'subId',
+        'q',
+        'options',
+        'ans',
+        'exp',
+        'diagramId',
+        'imageUrl',
+        'createdAt'
+      ]) &&
+      isValidRoomCode(data.roomCode) && data.roomCode == roomId &&
+      data.hostUid is string && data.hostUid.size() >= 1 && data.hostUid.size() <= 128 &&
+      data.index is int && data.index >= 0 && data.index < 15 &&
+      qIdx.matches('^[0-9]{1,2}$') &&
+      data.qId is string && data.qId.size() >= 1 && data.qId.size() <= 64 &&
+      data.sectorId is string && data.sectorId.size() <= 8 && data.sectorId.matches('^s[1-8]$') &&
+      data.subId is string && data.subId.size() <= 16 &&
+      data.q is string && data.q.size() >= 1 && data.q.size() <= 2000 &&
+      data.options is list && data.options.size() == 4 && data.options[0] is string &&
+      data.ans is int && data.ans >= 0 && data.ans <= 3 &&
+      data.exp is string && data.exp.size() <= 2000 &&
+      data.diagramId is string && data.diagramId.size() <= 64 &&
+      data.imageUrl is string && data.imageUrl.size() <= 300000 &&
+      data.createdAt is timestamp;
+    }
+
+    function isValidUserCloudData(data, userId) {
+      return data.keys().hasAll([
+        'uid',
+        'activeName',
+        'mode',
+        'theme',
+        'audioPrefs',
+        'profiles',
+        'createdAt',
+        'updatedAt'
+      ]) &&
+      data.keys().hasOnly([
+        'uid',
+        'activeName',
+        'mode',
+        'theme',
+        'audioPrefs',
+        'profiles',
+        'createdAt',
+        'updatedAt'
+      ]) &&
+      data.uid is string && data.uid == userId && data.uid == request.auth.uid &&
+      data.activeName is string && data.activeName.size() >= 1 && data.activeName.size() <= 40 &&
+      data.mode in ['student', 'projector'] &&
+      data.theme in ['space', 'bright', 'cyber', 'academy', 'dark', 'light'] &&
+      data.audioPrefs is map &&
+      data.audioPrefs.keys().hasAll(['sfxEnabled', 'bgmEnabled', 'bgmTrack']) &&
+      data.audioPrefs.keys().hasOnly(['sfxEnabled', 'bgmEnabled', 'bgmTrack']) &&
+      data.audioPrefs.sfxEnabled is bool &&
+      data.audioPrefs.bgmEnabled is bool &&
+      data.audioPrefs.bgmTrack in ['epic', 'cyber', 'nebula'] &&
+      data.profiles is map && data.profiles.keys().size() >= 1 && data.profiles.keys().size() <= 20 &&
+      data.createdAt is timestamp &&
+      data.updatedAt is timestamp;
+    }
+
+    function isValidCustomQuestion(data, userId, qId) {
+      return data.keys().hasAll([
+        'uid',
+        'id',
+        'sectorId',
+        'subId',
+        'q',
+        'options',
+        'ans',
+        'exp',
+        'diagramId',
+        'imageUrl',
+        'source',
+        'createdAt',
+        'updatedAt'
+      ]) &&
+      data.keys().hasOnly([
+        'uid',
+        'id',
+        'sectorId',
+        'subId',
+        'q',
+        'options',
+        'ans',
+        'exp',
+        'diagramId',
+        'imageUrl',
+        'source',
+        'createdAt',
+        'updatedAt'
+      ]) &&
+      data.uid is string && data.uid == userId && data.uid == request.auth.uid &&
+      data.id is string && data.id == qId && data.id.size() >= 1 && data.id.size() <= 64 &&
+      data.sectorId is string && data.sectorId.size() <= 8 && data.sectorId.matches('^s[1-8]$') &&
+      data.subId is string && data.subId.size() <= 16 && data.subId.matches('^s[1-8]-[1-3]$') &&
+      data.q is string && data.q.size() >= 1 && data.q.size() <= 2000 &&
+      data.options is list && data.options.size() == 4 && data.options[0] is string &&
+      data.ans is int && data.ans >= 0 && data.ans <= 3 &&
+      data.exp is string && data.exp.size() <= 2000 &&
+      data.diagramId is string && data.diagramId.size() <= 64 &&
+      data.imageUrl is string && data.imageUrl.size() <= 300000 &&
+      data.source in ['excel', 'word', 'manual'] &&
       data.createdAt is timestamp &&
       data.updatedAt is timestamp;
     }
 
     match /battleRooms/{roomId} {
-      allow get: if isSignedIn() && isValidId(roomId) && isValidRoomCode(roomId) && (
-        resource == null ||
-        resource.data.status == 'waiting' ||
-        resource.data.hostUid == request.auth.uid ||
-        resource.data.guestUid == request.auth.uid
-      );
+      allow get: if isSignedIn() && isValidId(roomId) && isValidRoomCode(roomId);
 
-      allow list: if isSignedIn() && (
-        resource.data.hostUid == request.auth.uid ||
-        resource.data.guestUid == request.auth.uid
-      );
+      allow list: if isSignedIn() && resource.data.hostUid == request.auth.uid;
 
       allow create: if isSignedIn() &&
         isValidId(roomId) &&
         isValidBattleRoom(incoming(), roomId) &&
         incoming().hostUid == request.auth.uid &&
-        incoming().guestUid == '' &&
-        incoming().guestName == '' &&
         incoming().status == 'waiting' &&
         incoming().currentIndex == 0 &&
-        incoming().hostScore == 0 &&
-        incoming().guestScore == 0 &&
-        incoming().hostAnsweredCount == 0 &&
-        incoming().guestAnsweredCount == 0 &&
-        incoming().hostCorrectCount == 0 &&
-        incoming().guestCorrectCount == 0 &&
+        incoming().answeredTotal == 0 &&
+        incoming().playerTotal == 0 &&
+        incoming().optionCounts[0] == 0 &&
+        incoming().optionCounts[1] == 0 &&
+        incoming().optionCounts[2] == 0 &&
+        incoming().optionCounts[3] == 0 &&
+        incoming().leaderboard.size() == 0 &&
         incoming().winnerUid == '' &&
+        incoming().winnerName == '' &&
         incoming().createdAt == request.time &&
         incoming().updatedAt == request.time;
 
       allow update: if isSignedIn() &&
         isValidId(roomId) &&
         isValidBattleRoom(incoming(), roomId) &&
+        existing().hostUid == request.auth.uid &&
+        existing().status != 'finished' &&
         incoming().createdAt == existing().createdAt &&
         incoming().hostUid == existing().hostUid &&
         incoming().roomCode == existing().roomCode &&
-        incoming().updatedAt == request.time &&
-        existing().status != 'finished' && (
+        incoming().updatedAt == request.time && (
           (
-            existing().status == 'waiting' &&
-            existing().guestUid == '' &&
-            request.auth.uid != existing().hostUid &&
-            incoming().guestUid == request.auth.uid &&
-            incoming().guestName.size() >= 1 &&
-            incoming().status == 'playing' &&
-            incoming().diff(existing()).affectedKeys().hasOnly(['guestUid', 'guestName', 'status', 'updatedAt'])
-          ) ||
-          (
-            existing().status == 'playing' &&
-            request.auth.uid == existing().hostUid &&
-            incoming().hostAnsweredCount == existing().hostAnsweredCount + 1 &&
-            incoming().hostScore >= existing().hostScore &&
-            incoming().hostCorrectCount >= existing().hostCorrectCount &&
-            incoming().hostCorrectCount <= existing().hostCorrectCount + 1 &&
-            incoming().diff(existing()).affectedKeys().hasOnly([
-              'hostScore',
-              'hostAnsweredCount',
-              'hostCorrectCount',
-              'hostLastCorrect',
-              'updatedAt'
-            ])
-          ) ||
-          (
-            existing().status == 'playing' &&
-            request.auth.uid == existing().guestUid &&
-            incoming().guestAnsweredCount == existing().guestAnsweredCount + 1 &&
-            incoming().guestScore >= existing().guestScore &&
-            incoming().guestCorrectCount >= existing().guestCorrectCount &&
-            incoming().guestCorrectCount <= existing().guestCorrectCount + 1 &&
-            incoming().diff(existing()).affectedKeys().hasOnly([
-              'guestScore',
-              'guestAnsweredCount',
-              'guestCorrectCount',
-              'guestLastCorrect',
-              'updatedAt'
-            ])
-          ) ||
-          (
-            existing().status == 'playing' &&
-            request.auth.uid == existing().hostUid &&
+            // Host updates waiting-room lobby counts or starts question 0
             (
-              (
-                incoming().status == 'playing' &&
-                incoming().currentIndex == existing().currentIndex + 1 &&
-                incoming().currentIndex < existing().questionIds.size()
-              ) ||
-              (
-                incoming().status == 'finished' &&
-                incoming().winnerUid in [existing().hostUid, existing().guestUid, 'draw']
-              )
+              (existing().status == 'waiting' && incoming().status == 'waiting') ||
+              (existing().status == 'waiting' && incoming().status == 'question' && incoming().currentIndex == 0) ||
+              (existing().status == 'question' && incoming().status == 'question' && incoming().currentIndex == existing().currentIndex) ||
+              (existing().status == 'question' && incoming().status == 'reveal' && incoming().currentIndex == existing().currentIndex) ||
+              (existing().status == 'reveal' && incoming().status == 'question' && incoming().currentIndex == existing().currentIndex + 1) ||
+              (existing().status in ['question', 'reveal'] && incoming().status == 'finished')
             ) &&
             incoming().diff(existing()).affectedKeys().hasOnly([
-              'currentIndex',
               'status',
+              'currentIndex',
+              'answeredTotal',
+              'playerTotal',
+              'optionCounts',
+              'leaderboard',
               'winnerUid',
+              'winnerName',
               'updatedAt'
             ])
           )
@@ -202,6 +324,160 @@ service cloud.firestore {
         isValidId(roomId) &&
         resource.data.hostUid == request.auth.uid &&
         resource.data.status == 'waiting';
+
+      match /players/{playerUid} {
+        allow get: if isSignedIn() && isValidId(roomId) && isValidId(playerUid) && (
+          playerUid == request.auth.uid ||
+          get(/databases/$(database)/documents/battleRooms/$(roomId)).data.hostUid == request.auth.uid
+        );
+
+        allow list: if isSignedIn() && (
+          resource.data.hostUid == request.auth.uid ||
+          resource.data.uid == request.auth.uid
+        );
+
+        allow create: if isSignedIn() &&
+          isValidId(roomId) &&
+          isValidId(playerUid) &&
+          isValidBattlePlayer(incoming(), roomId, playerUid) &&
+          incoming().score == 0 &&
+          incoming().streak == 0 &&
+          incoming().correctCount == 0 &&
+          incoming().answeredCount == 0 &&
+          incoming().lastRoundIndex == -1 &&
+          incoming().lastOption == -1 &&
+          incoming().lastCorrect == false &&
+          incoming().lastPoints == 0 &&
+          incoming().joinedAt == request.time &&
+          incoming().updatedAt == request.time &&
+          get(/databases/$(database)/documents/battleRooms/$(roomId)).data.status != 'finished' &&
+          get(/databases/$(database)/documents/battleRooms/$(roomId)).data.hostUid == incoming().hostUid;
+
+        allow update: if isSignedIn() &&
+          isValidId(roomId) &&
+          isValidId(playerUid) &&
+          isValidBattlePlayer(incoming(), roomId, playerUid) &&
+          existing().uid == request.auth.uid &&
+          incoming().uid == existing().uid &&
+          incoming().roomCode == existing().roomCode &&
+          incoming().hostUid == existing().hostUid &&
+          incoming().joinedAt == existing().joinedAt &&
+          incoming().updatedAt == request.time &&
+          incoming().lastRoundIndex > existing().lastRoundIndex &&
+          incoming().answeredCount == existing().answeredCount + 1 &&
+          incoming().score >= existing().score &&
+          incoming().score <= existing().score + 1500 &&
+          incoming().correctCount >= existing().correctCount &&
+          incoming().correctCount <= existing().correctCount + 1 &&
+          get(/databases/$(database)/documents/battleRooms/$(roomId)).data.status == 'question' &&
+          get(/databases/$(database)/documents/battleRooms/$(roomId)).data.currentIndex == incoming().lastRoundIndex &&
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'name',
+            'score',
+            'streak',
+            'correctCount',
+            'answeredCount',
+            'lastRoundIndex',
+            'lastOption',
+            'lastCorrect',
+            'lastPoints',
+            'updatedAt'
+          ]);
+
+        allow delete: if isSignedIn() &&
+          isValidId(roomId) &&
+          isValidId(playerUid) &&
+          (
+            playerUid == request.auth.uid ||
+            get(/databases/$(database)/documents/battleRooms/$(roomId)).data.hostUid == request.auth.uid
+          );
+      }
+
+      match /questions/{qIdx} {
+        allow get: if isSignedIn() && isValidId(roomId) && isValidId(qIdx);
+
+        allow list: if isSignedIn() && resource.data.roomCode == roomId;
+
+        allow create: if isSignedIn() &&
+          isValidId(roomId) &&
+          isValidId(qIdx) &&
+          isValidBattleQuestion(incoming(), roomId, qIdx) &&
+          incoming().hostUid == request.auth.uid &&
+          incoming().createdAt == request.time &&
+          getAfter(/databases/$(database)/documents/battleRooms/$(roomId)).data.hostUid == request.auth.uid;
+
+        allow delete: if isSignedIn() &&
+          isValidId(roomId) &&
+          isValidId(qIdx) &&
+          resource.data.hostUid == request.auth.uid;
+      }
+    }
+
+    match /userData/{userId} {
+      allow get: if isSignedIn() && isValidId(userId) && userId == request.auth.uid;
+      allow list: if false;
+
+      allow create: if isSignedIn() &&
+        isValidId(userId) &&
+        userId == request.auth.uid &&
+        isValidUserCloudData(incoming(), userId) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+
+      allow update: if isSignedIn() &&
+        isValidId(userId) &&
+        userId == request.auth.uid &&
+        isValidUserCloudData(incoming(), userId) &&
+        incoming().uid == existing().uid &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'activeName',
+          'mode',
+          'theme',
+          'audioPrefs',
+          'profiles',
+          'updatedAt'
+        ]);
+
+      allow delete: if isSignedIn() && isValidId(userId) && userId == request.auth.uid;
+
+      match /customQuestions/{questionId} {
+        allow get: if isSignedIn() && isValidId(userId) && isValidId(questionId) && userId == request.auth.uid;
+        allow list: if isSignedIn() && userId == request.auth.uid && resource.data.uid == request.auth.uid;
+
+        allow create: if isSignedIn() &&
+          isValidId(userId) &&
+          isValidId(questionId) &&
+          userId == request.auth.uid &&
+          isValidCustomQuestion(incoming(), userId, questionId) &&
+          incoming().createdAt == request.time &&
+          incoming().updatedAt == request.time;
+
+        allow update: if isSignedIn() &&
+          isValidId(userId) &&
+          isValidId(questionId) &&
+          userId == request.auth.uid &&
+          isValidCustomQuestion(incoming(), userId, questionId) &&
+          incoming().uid == existing().uid &&
+          incoming().id == existing().id &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().updatedAt == request.time &&
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'sectorId',
+            'subId',
+            'q',
+            'options',
+            'ans',
+            'exp',
+            'diagramId',
+            'imageUrl',
+            'source',
+            'updatedAt'
+          ]);
+
+        allow delete: if isSignedIn() && isValidId(userId) && isValidId(questionId) && userId == request.auth.uid;
+      }
     }
   }
 }

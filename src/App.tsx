@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { User as FirebaseUser, onAuthStateChanged } from 'firebase/auth';
+import { auth } from './firebase';
 import {
   SECTORS,
+  getMergedSectors,
   getSectorStarStats,
   getSubLessonQuestions,
   getTotalSystemStars,
@@ -12,6 +15,8 @@ import {
 } from './data/achievements';
 import {
   AppMode,
+  CUSTOM_QUESTIONS_STORAGE_KEY,
+  CustomQuestionRecord,
   HomeViewMode,
   LEGACY_STORAGE_KEY,
   MultiProfileStore,
@@ -29,7 +34,17 @@ import {
   createEmptySubLevelProgress,
   createInitialProfile,
   createInitialStore,
+  getNextThemeMode,
+  isDarkTheme,
+  normalizeThemeMode,
 } from './types';
+import {
+  deleteCloudCustomQuestion,
+  fetchCloudCustomQuestions,
+  fetchUserCloudData,
+  saveUserCloudData,
+  upsertCloudCustomQuestions,
+} from './utils/cloudSync';
 import { soundEngine } from './utils/soundEngine';
 import { ThemeContext } from './components/ThemeContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -168,8 +183,23 @@ function hydrateStore(parsed: Partial<MultiProfileStore>, defaultTheme?: ThemeMo
     activeName,
     profiles: cleanedProfiles,
     mode: parsed.mode === 'projector' ? 'projector' : 'student',
-    theme: defaultTheme ?? (parsed.theme === 'light' ? 'light' : 'dark'),
+    theme: defaultTheme ?? normalizeThemeMode(parsed.theme),
   };
+}
+
+function loadCustomQuestionsLocal(): CustomQuestionRecord[] {
+  try {
+    const raw = localStorage.getItem(CUSTOM_QUESTIONS_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(
+      (q): q is CustomQuestionRecord =>
+        Boolean(q) && typeof q.id === 'string' && typeof q.sectorId === 'string' && typeof q.q === 'string'
+    );
+  } catch {
+    return [];
+  }
 }
 
 function loadMultiProfileStore(): MultiProfileStore {
@@ -188,7 +218,7 @@ function loadMultiProfileStore(): MultiProfileStore {
 
     const rawV3 = localStorage.getItem(STORAGE_KEY_V3);
     if (rawV3) {
-      const hydrated = hydrateStore(JSON.parse(rawV3) as Partial<MultiProfileStore>, 'dark');
+      const hydrated = hydrateStore(JSON.parse(rawV3) as Partial<MultiProfileStore>, 'space');
       if (hydrated) return hydrated;
     }
 
@@ -221,6 +251,9 @@ function loadMultiProfileStore(): MultiProfileStore {
 
 export default function App() {
   const [store, setStore] = useState<MultiProfileStore>(() => loadMultiProfileStore());
+  const [customQuestions, setCustomQuestions] = useState<CustomQuestionRecord[]>(() =>
+    loadCustomQuestionsLocal()
+  );
   const [homeView, setHomeView] = useState<HomeViewMode>('planet');
   const [activeSectorId, setActiveSectorId] = useState<SectorId | null>(null);
   const [activeTab, setActiveTab] = useState<TerminalTab>('slides');
@@ -229,6 +262,17 @@ export default function App() {
   const [showProgressModal, setShowProgressModal] = useState(false);
   const [showWrongModal, setShowWrongModal] = useState(false);
   const [celebration, setCelebration] = useState<CelebrationPayload | null>(null);
+
+  const [cloudUser, setCloudUser] = useState<FirebaseUser | null>(null);
+  const [cloudSyncing, setCloudSyncing] = useState(false);
+  const [lastCloudSyncAt, setLastCloudSyncAt] = useState<number | null>(null);
+  const [audioSyncTick, setAudioSyncTick] = useState(0);
+  const cloudHydratedUidRef = useRef<string | null>(null);
+  const suppressCloudPushRef = useRef(false);
+  const storeRef = useRef(store);
+  storeRef.current = store;
+  const customQuestionsRef = useRef(customQuestions);
+  customQuestionsRef.current = customQuestions;
 
   const triggerCelebration = useCallback(
     (
@@ -255,9 +299,29 @@ export default function App() {
     return () => clearTimeout(t);
   }, [celebration]);
 
-  // Sync Tailwind v4 .dark class on <html>
+  // Global physical tactile button click SFX & audio unlock
   useEffect(() => {
-    document.documentElement.classList.toggle('dark', store.theme === 'dark');
+    const handleGlobalClick = (ev: MouseEvent) => {
+      const target = ev.target as HTMLElement | null;
+      const btn = target?.closest('button, [role="button"]');
+      if (!btn) return;
+      if ((btn as HTMLButtonElement).disabled || btn.getAttribute('aria-disabled') === 'true') return;
+      soundEngine.unlockIfNeeded();
+      if (btn.getAttribute('data-sfx') === 'custom') return;
+      soundEngine.playClick();
+    };
+    document.addEventListener('click', handleGlobalClick, { capture: true });
+    return () => document.removeEventListener('click', handleGlobalClick, { capture: true });
+  }, []);
+
+  // Subscribe to soundEngine changes so audio prefs also sync across devices
+  useEffect(() => {
+    return soundEngine.subscribe(() => setAudioSyncTick((v) => v + 1));
+  }, []);
+
+  // Sync Tailwind v4 .dark class on <html> for dark themes ('space' | 'cyber')
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', isDarkTheme(store.theme));
   }, [store.theme]);
 
   useEffect(() => {
@@ -267,6 +331,122 @@ export default function App() {
       // Ignore storage quota errors
     }
   }, [store]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(CUSTOM_QUESTIONS_STORAGE_KEY, JSON.stringify(customQuestions));
+    } catch {
+      // Ignore storage quota errors
+    }
+  }, [customQuestions]);
+
+  // Helper: Pull and merge user settings, profiles & custom questions from Firestore
+  const applyCloudSnapshot = useCallback(async (uid: string, forceRemote: boolean) => {
+    setCloudSyncing(true);
+    try {
+      const [cloudSnap, remoteQuestions] = await Promise.all([
+        fetchUserCloudData(uid),
+        fetchCloudCustomQuestions(uid),
+      ]);
+
+      if (cloudSnap) {
+        const localCur = storeRef.current;
+        const localMaxUpdated = Math.max(
+          0,
+          ...Object.values(localCur.profiles).map((p) => p.updatedAt ?? 0)
+        );
+        const localProfileCount = Object.keys(localCur.profiles).length;
+        const localTotalScore = Object.values(localCur.profiles).reduce(
+          (sum, p) => sum + (p.totalScore ?? 0),
+          0
+        );
+        const localIsUntouched = localProfileCount === 1 && localTotalScore === 0;
+
+        if (forceRemote || localIsUntouched || cloudSnap.updatedAtMs > localMaxUpdated) {
+          suppressCloudPushRef.current = true;
+          const hydrated = hydrateStore({
+            ...localCur,
+            ...cloudSnap.store,
+            profiles: {
+              ...localCur.profiles,
+              ...(cloudSnap.store.profiles ?? {}),
+            },
+          });
+          if (hydrated) {
+            setStore(hydrated);
+          }
+          if (cloudSnap.audioPrefs) {
+            soundEngine.applyCloudPrefs(cloudSnap.audioPrefs);
+          }
+        }
+        setLastCloudSyncAt(cloudSnap.updatedAtMs);
+      } else {
+        // First time this account connects: upload current local store
+        await saveUserCloudData(uid, storeRef.current, soundEngine.getPrefs());
+        setLastCloudSyncAt(Date.now());
+      }
+
+      if (remoteQuestions.length > 0 || customQuestionsRef.current.length > 0) {
+        const byId = new Map<string, CustomQuestionRecord>();
+        customQuestionsRef.current.forEach((q) => byId.set(q.id, q));
+        remoteQuestions.forEach((rq) => {
+          const prev = byId.get(rq.id);
+          if (!prev || forceRemote || (rq.updatedAt ?? 0) >= (prev.updatedAt ?? 0)) {
+            byId.set(rq.id, rq);
+          }
+        });
+        const mergedList = Array.from(byId.values());
+        setCustomQuestions(mergedList);
+
+        // Push any local-only questions up to cloud
+        const remoteIds = new Set(remoteQuestions.map((r) => r.id));
+        const missingRemotely = mergedList.filter((q) => !remoteIds.has(q.id));
+        if (missingRemotely.length > 0) {
+          await upsertCloudCustomQuestions(uid, missingRemotely);
+        }
+      }
+    } catch {
+      // Handled by Firestore error helper / non-blocking offline mode
+    } finally {
+      cloudHydratedUidRef.current = uid;
+      setCloudSyncing(false);
+    }
+  }, []);
+
+  // Listen to Firebase Auth state for automatic cross-device sync
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (user) => {
+      setCloudUser(user);
+      if (user) {
+        if (cloudHydratedUidRef.current !== user.uid) {
+          void applyCloudSnapshot(user.uid, false);
+        }
+      } else {
+        cloudHydratedUidRef.current = null;
+      }
+    });
+    return () => unsub();
+  }, [applyCloudSnapshot]);
+
+  // Debounced auto-push of settings & progress to Firestore when signed in
+  useEffect(() => {
+    if (!cloudUser) return;
+    if (cloudHydratedUidRef.current !== cloudUser.uid) return;
+    if (suppressCloudPushRef.current) {
+      suppressCloudPushRef.current = false;
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      setCloudSyncing(true);
+      void saveUserCloudData(cloudUser.uid, store, soundEngine.getPrefs())
+        .then(() => setLastCloudSyncAt(Date.now()))
+        .catch(() => {})
+        .finally(() => setCloudSyncing(false));
+    }, 1200);
+
+    return () => window.clearTimeout(timer);
+  }, [store, audioSyncTick, cloudUser]);
 
   const activeProfile =
     store.profiles[store.activeName] ?? createInitialProfile(store.activeName);
@@ -314,18 +494,20 @@ export default function App() {
     [activeProfile]
   );
 
-  const totalSystemStars = useMemo(() => getTotalSystemStars(SECTORS), []);
+  const mergedSectors = useMemo(() => getMergedSectors(customQuestions), [customQuestions]);
+
+  const totalSystemStars = useMemo(() => getTotalSystemStars(mergedSectors), [mergedSectors]);
   const totalEarnedStars = useMemo(
     () =>
-      SECTORS.reduce(
+      mergedSectors.reduce(
         (acc, sec) => acc + getSectorStarStats(sec, activeProfile.sectors[sec.id]).earned,
         0
       ),
-    [activeProfile]
+    [activeProfile, mergedSectors]
   );
 
   const activeSector = activeSectorId
-    ? SECTORS.find((sec) => sec.id === activeSectorId) ?? null
+    ? mergedSectors.find((sec) => sec.id === activeSectorId) ?? null
     : null;
 
   const activeSubLesson = useMemo(() => {
@@ -338,7 +520,7 @@ export default function App() {
   }, [activeSector, activeSubId]);
 
   const selectSector = (id: SectorId) => {
-    const sectorDef = SECTORS.find((s) => s.id === id);
+    const sectorDef = mergedSectors.find((s) => s.id === id);
     const sp = activeProfile.sectors[id];
     const firstIncompleteSub =
       sectorDef?.subLessons.find((sub) => !sp.subLevels?.[sub.id]?.completed) ??
@@ -376,15 +558,65 @@ export default function App() {
   };
 
   const handleToggleTheme = () => {
-    setStore((prev) => ({ ...prev, theme: prev.theme === 'light' ? 'dark' : 'light' }));
+    setStore((prev) => ({ ...prev, theme: getNextThemeMode(prev.theme) }));
   };
 
   const handleChangeMode = (mode: AppMode) => {
     setStore((prev) => ({ ...prev, mode }));
   };
 
+  const handleSyncNowToCloud = async () => {
+    if (!cloudUser) return;
+    setCloudSyncing(true);
+    try {
+      await saveUserCloudData(cloudUser.uid, store, soundEngine.getPrefs());
+      if (customQuestions.length > 0) {
+        await upsertCloudCustomQuestions(cloudUser.uid, customQuestions);
+      }
+      setLastCloudSyncAt(Date.now());
+    } finally {
+      setCloudSyncing(false);
+    }
+  };
+
+  const handlePullFromCloud = async () => {
+    if (!cloudUser) return;
+    await applyCloudSnapshot(cloudUser.uid, true);
+  };
+
+  const handleImportCustomQuestions = async (items: CustomQuestionRecord[]) => {
+    if (items.length === 0) return;
+    setCustomQuestions((prev) => {
+      const map = new Map(prev.map((q) => [q.id, q]));
+      items.forEach((item) => map.set(item.id, item));
+      return Array.from(map.values());
+    });
+    if (cloudUser) {
+      setCloudSyncing(true);
+      try {
+        await upsertCloudCustomQuestions(cloudUser.uid, items);
+        setLastCloudSyncAt(Date.now());
+      } finally {
+        setCloudSyncing(false);
+      }
+    }
+  };
+
+  const handleDeleteCustomQuestion = async (questionId: string) => {
+    setCustomQuestions((prev) => prev.filter((q) => q.id !== questionId));
+    if (cloudUser) {
+      setCloudSyncing(true);
+      try {
+        await deleteCloudCustomQuestion(cloudUser.uid, questionId);
+        setLastCloudSyncAt(Date.now());
+      } finally {
+        setCloudSyncing(false);
+      }
+    }
+  };
+
   const handleCompleteSlides = (sectorId: SectorId) => {
-    const sectorDef = SECTORS.find((s) => s.id === sectorId);
+    const sectorDef = mergedSectors.find((s) => s.id === sectorId);
     const wasDone = activeProfile.sectors[sectorId].slides;
     updateActiveProfile((prof) => {
       const target = prof.sectors[sectorId];
@@ -405,7 +637,7 @@ export default function App() {
   };
 
   const handleCompleteWarmup = (sectorId: SectorId) => {
-    const sectorDef = SECTORS.find((s) => s.id === sectorId);
+    const sectorDef = mergedSectors.find((s) => s.id === sectorId);
     const wasDone = activeProfile.sectors[sectorId].warmup;
     updateActiveProfile((prof) => {
       const target = prof.sectors[sectorId];
@@ -433,7 +665,7 @@ export default function App() {
     optIdx: number,
     isCorrect: boolean
   ) => {
-    const sectorDef = SECTORS.find((s) => s.id === sectorId);
+    const sectorDef = mergedSectors.find((s) => s.id === sectorId);
     const subDef = sectorDef?.subLessons.find((s) => s.id === subId);
     if (!sectorDef || !subDef) return;
 
@@ -567,7 +799,7 @@ export default function App() {
   };
 
   const handleCompleteLab = (sectorId: SectorId, bonus: number) => {
-    const sectorDef = SECTORS.find((s) => s.id === sectorId);
+    const sectorDef = mergedSectors.find((s) => s.id === sectorId);
     const wasDone = activeProfile.sectors[sectorId].lab;
     updateActiveProfile((prof) => {
       const target = prof.sectors[sectorId];
@@ -714,15 +946,100 @@ export default function App() {
     }
   };
 
+  const outerThemeClass =
+    store.theme === 'space'
+      ? 'space-grid-bg bg-[#030714] text-slate-100'
+      : 'light-sky-bg text-slate-900';
+
   return (
     <ErrorBoundary>
       <ThemeContext.Provider value={store.theme}>
-        <div
-          className={`relative min-h-screen transition-colors ${
-            store.theme === 'dark' ? 'space-grid-bg bg-[#070B14] text-slate-100' : 'light-sky-bg text-slate-900'
-          }`}
-        >
-          {store.theme === 'dark' && <StarfieldCanvas />}
+        <div className={`relative min-h-screen overflow-x-hidden transition-colors ${outerThemeClass}`}>
+          {isDarkTheme(store.theme) ? (
+            <>
+              {/* Cosmic Nebula Volumetric Backdrop */}
+              <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden" aria-hidden="true">
+                <div
+                  className="animate-nebula-drift absolute -top-28 -left-24 h-[520px] w-[520px] rounded-full blur-[95px]"
+                  style={{
+                    background:
+                      'radial-gradient(circle, rgba(14,165,233,0.28) 0%, rgba(56,189,248,0.08) 55%, transparent 75%)',
+                  }}
+                />
+                <div
+                  className="animate-nebula-drift absolute top-1/4 -right-24 h-[560px] w-[560px] rounded-full blur-[110px]"
+                  style={{
+                    animationDelay: '-4.5s',
+                    background:
+                      'radial-gradient(circle, rgba(139,92,246,0.26) 0%, rgba(236,72,153,0.08) 52%, transparent 76%)',
+                  }}
+                />
+                <div
+                  className="animate-nebula-drift absolute -bottom-32 left-1/3 h-[460px] w-[640px] rounded-full blur-[100px]"
+                  style={{
+                    animationDelay: '-8s',
+                    background:
+                      'radial-gradient(circle, rgba(20,184,166,0.2) 0%, rgba(14,165,233,0.05) 60%, transparent 78%)',
+                  }}
+                />
+              </div>
+              <StarfieldCanvas />
+            </>
+          ) : (
+            /* High-Altitude Cosmic Daylight Atmosphere Backdrop */
+            <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden" aria-hidden="true">
+              <div
+                className="animate-nebula-drift absolute -top-24 right-[6%] h-[420px] w-[420px] rounded-full blur-[80px]"
+                style={{
+                  background:
+                    'radial-gradient(circle, rgba(254,240,138,0.62) 0%, rgba(186,230,253,0.16) 60%, transparent 80%)',
+                }}
+              />
+              <div
+                className="animate-nebula-drift absolute -bottom-24 left-[8%] h-[380px] w-[520px] rounded-full blur-[90px]"
+                style={{
+                  animationDelay: '-5s',
+                  background:
+                    'radial-gradient(circle, rgba(56,189,248,0.32) 0%, rgba(14,165,233,0.08) 60%, transparent 80%)',
+                }}
+              />
+              <svg
+                viewBox="0 0 1440 900"
+                preserveAspectRatio="xMidYMid slice"
+                className="h-full w-full opacity-90"
+              >
+                {/* Faint Cosmic Orbital Horizon Arcs */}
+                <ellipse
+                  cx="720"
+                  cy="920"
+                  rx="860"
+                  ry="240"
+                  fill="none"
+                  stroke="#FFFFFF"
+                  strokeOpacity="0.45"
+                  strokeWidth="1.5"
+                  strokeDasharray="10 12"
+                />
+                {/* Layered Soft Stratospheric Clouds */}
+                <g fill="#FFFFFF" fillOpacity="0.48">
+                  <ellipse cx="180" cy="210" rx="115" ry="32" />
+                  <ellipse cx="235" cy="196" rx="70" ry="26" />
+                  <ellipse cx="1210" cy="240" rx="130" ry="34" />
+                  <ellipse cx="1150" cy="222" rx="78" ry="28" />
+                  <ellipse cx="740" cy="128" rx="102" ry="24" fillOpacity="0.34" />
+                </g>
+                {/* Daylight Stardust Sparkles */}
+                <g fill="#FFFFFF" fillOpacity="0.72">
+                  <circle cx="140" cy="110" r="2.2" />
+                  <circle cx="380" cy="95" r="1.8" />
+                  <circle cx="960" cy="105" r="2.4" />
+                  <circle cx="1310" cy="145" r="2" />
+                  <circle cx="260" cy="690" r="2.2" />
+                  <circle cx="1180" cy="710" r="2.4" />
+                </g>
+              </svg>
+            </div>
+          )}
 
           <div className="relative z-10 flex min-h-screen flex-col">
             <TopBar
@@ -750,7 +1067,7 @@ export default function App() {
               onToggleTheme={handleToggleTheme}
             />
 
-            <main className="flex-1 pb-24">
+            <main className={activeSector === null && homeView === 'planet' ? 'flex-1' : 'flex-1 pb-24'}>
               {activeSector ? (
                 <SectorTerminal
                   key={activeSector.id}
@@ -797,6 +1114,10 @@ export default function App() {
               ) : homeView === 'battle' ? (
                 <OnlineBattleView
                   profile={activeProfile}
+                  theme={store.theme}
+                  customQuestions={customQuestions}
+                  sectorsSource={mergedSectors}
+                  onCycleTheme={handleToggleTheme}
                   onClaimBattleBonus={handleClaimBattleBonus}
                   onBackToHome={() => setHomeView('planet')}
                 />
@@ -818,6 +1139,7 @@ export default function App() {
           <SpaceFairyGuide
             theme={store.theme}
             mode={store.mode}
+            isPlanetHome={activeSector === null && homeView === 'planet'}
             activeSector={activeSector}
             activeTab={activeTab}
             activeSubLesson={activeSubLesson}
@@ -835,6 +1157,15 @@ export default function App() {
           {showProgressModal && (
             <ProgressManagerModal
               store={store}
+              sectorsSource={mergedSectors}
+              customQuestions={customQuestions}
+              cloudUser={cloudUser}
+              cloudSyncing={cloudSyncing}
+              lastCloudSyncAt={lastCloudSyncAt}
+              onSyncNowToCloud={handleSyncNowToCloud}
+              onPullFromCloud={handlePullFromCloud}
+              onImportCustomQuestions={handleImportCustomQuestions}
+              onDeleteCustomQuestion={handleDeleteCustomQuestion}
               onClose={() => setShowProgressModal(false)}
               onSwitchProfile={handleSwitchProfile}
               onClearSector={handleClearSector}
@@ -846,6 +1177,7 @@ export default function App() {
           {showWrongModal && (
             <WrongReviewModal
               profile={activeProfile}
+              sectorsSource={mergedSectors}
               onClose={() => setShowWrongModal(false)}
               onResolveWrong={handleResolveWrong}
             />

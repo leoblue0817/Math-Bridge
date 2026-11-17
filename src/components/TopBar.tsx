@@ -1,4 +1,5 @@
-import { HomeViewMode, SectorId, ThemeMode } from '../types';
+import { Moon, Sun } from 'lucide-react';
+import { HomeViewMode, SectorId, THEME_META, ThemeMode, isDarkTheme } from '../types';
 import { soundEngine } from '../utils/soundEngine';
 
 interface TopBarProps {
@@ -29,10 +30,12 @@ export function TopBar({
   const isOnPlanet = activeSectorId === null && homeView === 'planet';
   const isOnGrid = activeSectorId === null && homeView === 'grid';
   const isOnBattle = activeSectorId === null && homeView === 'battle';
+  const themeMeta = THEME_META[theme];
+  const isDark = isDarkTheme(theme);
 
   return (
-    <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/85 backdrop-blur-md dark:border-slate-800/90 dark:bg-[#070B14]/90">
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-8 px-6 py-3.5">
+    <header className="sticky top-2.5 z-30 mx-auto w-full max-w-[1600px] px-4 sm:px-5">
+      <div className="glass-hud-panel flex items-center justify-between gap-6 rounded-2xl px-5 py-2.5">
         {/* Zone 1: Single text element Brand wordmark */}
         <button
           type="button"
@@ -40,7 +43,7 @@ export function TopBar({
             soundEngine.playClick();
             onGoHomePlanet();
           }}
-          className="shrink-0 whitespace-nowrap text-left text-lg font-bold tracking-tight text-slate-900 transition-colors hover:text-sky-600 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-sky-500 dark:text-slate-50 dark:hover:text-cyan-300 dark:focus-visible:outline-cyan-400"
+          className="shrink-0 whitespace-nowrap text-left text-base font-extrabold tracking-tight text-slate-900 transition-colors hover:text-sky-600 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-sky-500 sm:text-lg dark:text-slate-50 dark:hover:text-cyan-300 dark:focus-visible:outline-cyan-400"
         >
           星際數學領航艦
         </button>
@@ -53,13 +56,13 @@ export function TopBar({
               soundEngine.playClick();
               onGoHomePlanet();
             }}
-            className={`shrink-0 whitespace-nowrap border-b-2 py-1 text-sm font-medium transition-colors ${
+            className={`shrink-0 whitespace-nowrap border-b-2 py-1 text-sm font-semibold transition-colors ${
               isOnPlanet
                 ? 'border-sky-600 text-sky-700 dark:border-cyan-400 dark:text-cyan-300'
-                : 'border-transparent text-slate-600 hover:border-slate-300 hover:text-slate-900 dark:text-slate-400 dark:hover:border-slate-700 dark:hover:text-slate-100'
+                : 'border-transparent text-slate-700 hover:border-slate-300 hover:text-slate-950 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:text-white'
             }`}
           >
-            星球首頁
+            微縮主星
           </button>
 
           <button
@@ -68,10 +71,10 @@ export function TopBar({
               soundEngine.playClick();
               onGoHomeGrid();
             }}
-            className={`shrink-0 whitespace-nowrap border-b-2 py-1 text-sm font-medium transition-colors ${
+            className={`shrink-0 whitespace-nowrap border-b-2 py-1 text-sm font-semibold transition-colors ${
               isOnGrid
                 ? 'border-sky-600 text-sky-700 dark:border-cyan-400 dark:text-cyan-300'
-                : 'border-transparent text-slate-600 hover:border-slate-300 hover:text-slate-900 dark:text-slate-400 dark:hover:border-slate-700 dark:hover:text-slate-100'
+                : 'border-transparent text-slate-700 hover:border-slate-300 hover:text-slate-950 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:text-white'
             }`}
           >
             八區航圖
@@ -83,10 +86,10 @@ export function TopBar({
               soundEngine.playClick();
               onGoBattle();
             }}
-            className={`shrink-0 whitespace-nowrap border-b-2 py-1 text-sm font-medium transition-colors ${
+            className={`shrink-0 whitespace-nowrap border-b-2 py-1 text-sm font-semibold transition-colors ${
               isOnBattle
                 ? 'border-amber-500 text-amber-600 dark:border-amber-400 dark:text-amber-300'
-                : 'border-transparent text-slate-600 hover:border-slate-300 hover:text-slate-900 dark:text-slate-400 dark:hover:border-slate-700 dark:hover:text-slate-100'
+                : 'border-transparent text-slate-700 hover:border-slate-300 hover:text-slate-950 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:text-white'
             }`}
           >
             線上對戰
@@ -98,9 +101,9 @@ export function TopBar({
               soundEngine.playClick();
               onOpenProgress();
             }}
-            className="shrink-0 whitespace-nowrap border-b-2 border-transparent py-1 text-sm font-medium text-slate-600 transition-colors hover:border-slate-300 hover:text-slate-900 dark:text-slate-400 dark:hover:border-slate-700 dark:hover:text-slate-100"
+            className="shrink-0 whitespace-nowrap border-b-2 border-transparent py-1 text-sm font-semibold text-slate-700 transition-colors hover:border-slate-300 hover:text-slate-950 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:text-white"
           >
-            進度管理
+            進度與題庫
           </button>
 
           <button
@@ -109,13 +112,13 @@ export function TopBar({
               soundEngine.playClick();
               onOpenWrongReview();
             }}
-            className="shrink-0 whitespace-nowrap border-b-2 border-transparent py-1 text-sm font-medium text-slate-600 transition-colors hover:border-slate-300 hover:text-slate-900 dark:text-slate-400 dark:hover:border-slate-700 dark:hover:text-slate-100"
+            className="shrink-0 whitespace-nowrap border-b-2 border-transparent py-1 text-sm font-semibold text-slate-700 transition-colors hover:border-slate-300 hover:text-slate-950 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:text-white"
           >
             錯題複習（{wrongCount}）
           </button>
         </nav>
 
-        {/* Zone 3: 1 primary action */}
+        {/* Zone 3: Click-to-cycle Day/Night space lighting button */}
         <div className="shrink-0">
           {activeSectorId ? (
             <button
@@ -124,9 +127,9 @@ export function TopBar({
                 soundEngine.playClick();
                 onGoHomePlanet();
               }}
-              className="shrink-0 whitespace-nowrap rounded-lg border border-sky-500/40 bg-sky-50 px-4 py-2 text-sm font-semibold text-sky-800 transition-colors hover:bg-sky-100 dark:border-cyan-500/40 dark:bg-cyan-500/15 dark:text-cyan-200 dark:hover:bg-cyan-500/25"
+              className="shrink-0 whitespace-nowrap rounded-xl border border-sky-500/40 bg-sky-500/15 px-4 py-1.5 text-sm font-bold text-sky-900 transition-colors hover:bg-sky-500/25 dark:border-cyan-400/40 dark:bg-cyan-500/15 dark:text-cyan-200 dark:hover:bg-cyan-500/25"
             >
-              返回星球首頁
+              返回微縮主星
             </button>
           ) : (
             <button
@@ -135,9 +138,15 @@ export function TopBar({
                 soundEngine.playClick();
                 onToggleTheme();
               }}
-              className="shrink-0 whitespace-nowrap rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 transition-colors hover:border-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-500"
+              title="點按切換「星夜極光」／「星晝晨光」星際日夜光源"
+              className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-xl border border-sky-300/70 bg-white/80 px-3 py-1.5 text-xs font-bold text-slate-800 shadow-sm transition-colors hover:border-sky-500 dark:border-cyan-400/35 dark:bg-slate-900/75 dark:text-slate-100 dark:hover:border-cyan-300"
             >
-              {theme === 'light' ? '切換動感太空' : '切換明亮星球'}
+              {isDark ? (
+                <Moon className="h-3.5 w-3.5 text-cyan-400" aria-hidden="true" />
+              ) : (
+                <Sun className="h-3.5 w-3.5 text-amber-500" aria-hidden="true" />
+              )}
+              <span>光源：{themeMeta.shortLabel} ↻</span>
             </button>
           )}
         </div>

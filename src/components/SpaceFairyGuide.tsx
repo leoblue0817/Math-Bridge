@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react';
 import { MessageCircle, RefreshCw, Sparkles, X } from 'lucide-react';
 import { SectorData, SubLesson } from '../data/sectors';
-import { AppMode, TerminalTab, ThemeMode } from '../types';
+import { AppMode, TerminalTab, ThemeMode, isDarkTheme } from '../types';
 
 interface SpaceFairyGuideProps {
   theme: ThemeMode;
   mode: AppMode;
+  isPlanetHome?: boolean;
   activeSector: SectorData | null;
   activeTab: TerminalTab;
   activeSubLesson: SubLesson | null;
@@ -51,6 +52,7 @@ function FairySprite({ isDark }: { isDark: boolean }) {
 export function SpaceFairyGuide({
   theme,
   mode,
+  isPlanetHome = false,
   activeSector,
   activeTab,
   activeSubLesson,
@@ -58,9 +60,9 @@ export function SpaceFairyGuide({
   totalEarnedStars,
   totalSystemStars,
 }: SpaceFairyGuideProps) {
-  const [isOpen, setIsOpen] = useState(true);
+  const [isOpen, setIsOpen] = useState(!isPlanetHome);
   const [tipSeed, setTipSeed] = useState(0);
-  const isDark = theme === 'dark';
+  const isDark = isDarkTheme(theme);
 
   const tips = useMemo(() => {
     const list: string[] = [];
@@ -73,12 +75,12 @@ export function SpaceFairyGuide({
 
     if (!activeSector) {
       list.push(
-        `歡迎來到星際數學太陽系！目前已收集 ${totalEarnedStars} / ${totalSystemStars} 顆星星，點選軌道上的任意行星就能展開冒險！`
+        `歡迎來到 3D 星際探險星系！目前已收集 ${totalEarnedStars} / ${totalSystemStars} 顆星星，可拖曳 360° 環視宇宙、滾輪縮放，點擊 8 顆公轉星球飛近登陸！`
       );
-      list.push('滑鼠移到任何行星或右側星球列表上，軌道會自動暫停讓你輕鬆點擊出發。');
-      list.push('點選上方「錯題複習艙」可以專攻曾經卡關的題目，把星星補齊喔！');
+      list.push('點擊右上角日夜光源按鈕，可以在「星夜極光」與「星晝晨光」之間自由切換宇宙照明！');
+      list.push('點選「錯題複習艙」可以專攻曾經卡關的題目，把星星補齊喔！');
       if (mode === 'projector') {
-        list.push('教室投影模式啟動中：點擊任一星球即可進入全螢幕簡報與課堂即時互動！');
+        list.push('教室投影模式啟動中：點擊任一 3D 星球飛近特寫，再按下「立即降落探索」進入全螢幕簡報！');
       }
       return list;
     }
@@ -103,13 +105,17 @@ export function SpaceFairyGuide({
   }, [activeSector, activeTab, activeSubLesson, lastQuizOutcome, mode, totalEarnedStars, totalSystemStars]);
 
   const currentTip = tips[tipSeed % tips.length] ?? tips[0];
+  const positionClass = isPlanetHome
+    ? 'fixed right-4 bottom-24 z-30 sm:bottom-[104px]'
+    : 'fixed right-5 bottom-5 z-40';
+  const surfaceClass = isPlanetHome ? 'webgl-hud-surface' : 'glass-hud-corner';
 
   if (!isOpen) {
     return (
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className="fixed right-5 bottom-5 z-40 inline-flex items-center gap-2 rounded-2xl border border-sky-300 bg-white/95 px-3.5 py-2 text-xs font-bold text-slate-900 shadow-lg backdrop-blur-md transition-transform hover:scale-105 dark:border-cyan-400/50 dark:bg-[#0D1424]/95 dark:text-white"
+        className={`${positionClass} ${surfaceClass} inline-flex items-center gap-2 rounded-2xl px-3.5 py-2 text-xs font-bold text-slate-900 shadow-lg transition-transform hover:scale-105 dark:text-white`}
         aria-label="展開Blue老師小精靈提示"
       >
         <FairySprite isDark={isDark} />
@@ -124,7 +130,7 @@ export function SpaceFairyGuide({
   return (
     <aside
       aria-label="Blue老師課堂巡遊小精靈"
-      className="fixed right-5 bottom-5 z-40 w-[305px] max-w-[calc(100vw-2.5rem)] rounded-2xl border border-sky-200 bg-white/95 p-3.5 shadow-xl backdrop-blur-md dark:border-cyan-500/40 dark:bg-[#0D1424]/95"
+      className={`${positionClass} ${surfaceClass} w-[305px] max-w-[calc(100vw-2.5rem)] rounded-2xl p-3.5 shadow-xl`}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2">
@@ -135,7 +141,7 @@ export function SpaceFairyGuide({
               <span>Blue老師小叮嚀</span>
             </div>
             <div className="text-xs font-bold text-slate-900 dark:text-white">
-              {activeSector ? `${activeSector.shortTitle} · 巡航支援` : '太陽系星圖 · 課堂巡遊中'}
+              {activeSector ? `${activeSector.shortTitle} · 巡航支援` : '3D 星系探險 · 課堂巡遊中'}
             </div>
           </div>
         </div>
@@ -150,7 +156,7 @@ export function SpaceFairyGuide({
         </button>
       </div>
 
-      <div className="mt-2.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs leading-relaxed text-slate-700 dark:border-slate-800 dark:bg-[#080D1A] dark:text-slate-200">
+      <div className="mt-2.5 rounded-xl border border-slate-200/70 bg-white/60 px-3 py-2.5 text-xs leading-relaxed text-slate-700 dark:border-slate-700/60 dark:bg-slate-950/55 dark:text-slate-200">
         {currentTip}
       </div>
 
@@ -163,7 +169,7 @@ export function SpaceFairyGuide({
           <button
             type="button"
             onClick={() => setTipSeed((s) => s + 1)}
-            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 font-semibold text-sky-700 hover:border-sky-400 dark:border-slate-700 dark:bg-slate-900 dark:text-cyan-300"
+            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white/80 px-2.5 py-1 font-semibold text-sky-700 hover:border-sky-400 dark:border-slate-700 dark:bg-slate-900/80 dark:text-cyan-300"
           >
             <RefreshCw className="h-3 w-3" aria-hidden="true" />
             <span>換一則叮嚀</span>

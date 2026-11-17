@@ -2,11 +2,68 @@ export type SectorId = 's1' | 's2' | 's3' | 's4' | 's5' | 's6' | 's7' | 's8';
 
 export type AppMode = 'student' | 'projector';
 
-export type ThemeMode = 'light' | 'dark';
+export type ThemeMode = 'space' | 'bright';
+
+export const THEME_CYCLE_ORDER: ThemeMode[] = ['space', 'bright'];
+
+export interface ThemeMetaInfo {
+  id: ThemeMode;
+  label: string;
+  shortLabel: string;
+  desc: string;
+  isDark: boolean;
+}
+
+export const THEME_META: Record<ThemeMode, ThemeMetaInfo> = {
+  space: {
+    id: 'space',
+    label: '星夜極光',
+    shortLabel: '星夜極光',
+    desc: '深邃宇宙極光夜空與發光微縮太空主星',
+    isDark: true,
+  },
+  bright: {
+    id: 'bright',
+    label: '星晝晨光',
+    shortLabel: '星晝晨光',
+    desc: '高空星晝晨光大氣與清透微縮太空主星',
+    isDark: false,
+  },
+};
+
+export function normalizeThemeMode(raw: unknown): ThemeMode {
+  if (raw === 'bright' || raw === 'light' || raw === 'academy') {
+    return 'bright';
+  }
+  return 'space';
+}
+
+export function isDarkTheme(theme: ThemeMode): boolean {
+  return theme === 'space';
+}
+
+export function getNextThemeMode(current: ThemeMode): ThemeMode {
+  const idx = THEME_CYCLE_ORDER.indexOf(current);
+  return THEME_CYCLE_ORDER[(idx + 1) % THEME_CYCLE_ORDER.length];
+}
 
 export type HomeViewMode = 'planet' | 'grid' | 'battle';
 
 export type TerminalTab = 'slides' | 'warmup' | 'micro' | 'lab';
+
+export interface CustomQuestionRecord {
+  id: string;
+  sectorId: SectorId;
+  subId: string;
+  q: string;
+  options: string[];
+  ans: number;
+  exp: string;
+  diagramId?: string;
+  imageUrl?: string;
+  source?: 'excel' | 'word' | 'manual';
+  updatedAt?: number;
+}
 
 export interface SubLevelProgress {
   completed: boolean;
@@ -112,7 +169,7 @@ export function createInitialStore(): MultiProfileStore {
       [defaultName]: createInitialProfile(defaultName),
     },
     mode: 'student',
-    theme: 'dark',
+    theme: 'space',
   };
 }
 
@@ -128,3 +185,4 @@ export const LEGACY_STORAGE_KEY = 'math_voyager_8sectors_v2';
 export const STORAGE_KEY_V3 = 'math_voyager_8sectors_v3';
 export const STORAGE_KEY_V4 = 'math_voyager_8sectors_v4';
 export const STORAGE_KEY_V5 = 'math_voyager_8sectors_v5';
+export const CUSTOM_QUESTIONS_STORAGE_KEY = 'math_voyager_custom_questions_v1';

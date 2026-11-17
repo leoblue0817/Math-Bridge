@@ -2,7 +2,7 @@
   "entities": {
     "BattleRoom": {
       "title": "BattleRoom",
-      "description": "Real-time 2-player math quiz battle room synchronized via Firestore.",
+      "description": "Kahoot-style host-controlled multiplayer math quiz battle room synchronized via Firestore.",
       "type": "object",
       "properties": {
         "roomCode": {
@@ -16,33 +16,29 @@
           "type": "string",
           "minLength": 1,
           "maxLength": 128,
-          "description": "Firebase Auth UID of room creator."
+          "description": "Firebase Auth UID of room host."
         },
         "hostName": {
           "type": "string",
           "minLength": 1,
           "maxLength": 32,
-          "description": "Display name of host explorer."
-        },
-        "guestUid": {
-          "type": "string",
-          "maxLength": 128,
-          "description": "Firebase Auth UID of joined challenger, empty string while waiting."
-        },
-        "guestName": {
-          "type": "string",
-          "maxLength": 32,
-          "description": "Display name of challenger, empty string while waiting."
+          "description": "Display name of room host."
         },
         "sectorScope": {
           "type": "string",
-          "pattern": "^(all|s[1-8])$",
-          "maxLength": 8,
-          "description": "Topic scope: all 8 sectors or single sector s1..s8."
+          "pattern": "^(all|s[1-8]|s[1-8]-[1-3])$",
+          "maxLength": 12,
+          "description": "Topic scope: all sectors, single sector s1..s8, or sub-lesson s1-1..s8-3."
         },
-        "questionIds": {
-          "type": "array",
-          "description": "Bounded ordered list of stable quiz question IDs (3 to 10 items)."
+        "scopeLabel": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "description": "Human-readable title of the selected battle scope."
+        },
+        "questionCount": {
+          "type": "integer",
+          "description": "Total number of questions in the battle (3 to 15)."
         },
         "questionSeconds": {
           "type": "integer",
@@ -50,50 +46,39 @@
         },
         "status": {
           "type": "string",
-          "enum": ["waiting", "playing", "finished"],
+          "enum": ["waiting", "question", "reveal", "finished"],
           "maxLength": 16,
-          "description": "Current room lifecycle state."
+          "description": "Current Kahoot room phase controlled by host."
         },
         "currentIndex": {
           "type": "integer",
-          "description": "Active question index (0 to 10)."
+          "description": "Active question index (0 to 14)."
         },
-        "hostScore": {
+        "answeredTotal": {
           "type": "integer",
-          "description": "Host accumulated battle score."
+          "description": "Number of players who answered the current question."
         },
-        "guestScore": {
+        "playerTotal": {
           "type": "integer",
-          "description": "Guest accumulated battle score."
+          "description": "Total joined players synchronized by host."
         },
-        "hostAnsweredCount": {
-          "type": "integer",
-          "description": "Number of rounds answered by host."
+        "optionCounts": {
+          "type": "array",
+          "description": "4-element array of option selection counts [A, B, C, D] published on reveal."
         },
-        "guestAnsweredCount": {
-          "type": "integer",
-          "description": "Number of rounds answered by guest."
-        },
-        "hostCorrectCount": {
-          "type": "integer",
-          "description": "Number of correct answers by host."
-        },
-        "guestCorrectCount": {
-          "type": "integer",
-          "description": "Number of correct answers by guest."
-        },
-        "hostLastCorrect": {
-          "type": "boolean",
-          "description": "Whether host answered the latest question correctly."
-        },
-        "guestLastCorrect": {
-          "type": "boolean",
-          "description": "Whether guest answered the latest question correctly."
+        "leaderboard": {
+          "type": "array",
+          "description": "Bounded top-30 player leaderboard summaries published by host on reveal/finish."
         },
         "winnerUid": {
           "type": "string",
           "maxLength": 128,
-          "description": "Winner UID, 'draw', or empty string before completion."
+          "description": "Top winner UID, 'draw', or empty string before completion."
+        },
+        "winnerName": {
+          "type": "string",
+          "maxLength": 32,
+          "description": "Top winner display name."
         },
         "createdAt": {
           "type": "string",
@@ -103,29 +88,195 @@
         "updatedAt": {
           "type": "string",
           "format": "date-time",
-          "description": "Server last update timestamp."
+          "description": "Server last phase transition / update timestamp."
         }
       },
       "required": [
         "roomCode",
         "hostUid",
         "hostName",
-        "guestUid",
-        "guestName",
         "sectorScope",
-        "questionIds",
+        "scopeLabel",
+        "questionCount",
         "questionSeconds",
         "status",
         "currentIndex",
-        "hostScore",
-        "guestScore",
-        "hostAnsweredCount",
-        "guestAnsweredCount",
-        "hostCorrectCount",
-        "guestCorrectCount",
-        "hostLastCorrect",
-        "guestLastCorrect",
+        "answeredTotal",
+        "playerTotal",
+        "optionCounts",
+        "leaderboard",
         "winnerUid",
+        "winnerName",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "BattlePlayer": {
+      "title": "BattlePlayer",
+      "description": "Per-player state in a multiplayer battle room.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "roomCode": {
+          "type": "string",
+          "minLength": 6,
+          "maxLength": 6
+        },
+        "hostUid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 32
+        },
+        "score": {
+          "type": "integer"
+        },
+        "streak": {
+          "type": "integer"
+        },
+        "correctCount": {
+          "type": "integer"
+        },
+        "answeredCount": {
+          "type": "integer"
+        },
+        "lastRoundIndex": {
+          "type": "integer"
+        },
+        "lastOption": {
+          "type": "integer"
+        },
+        "lastCorrect": {
+          "type": "boolean"
+        },
+        "lastPoints": {
+          "type": "integer"
+        },
+        "joinedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "uid",
+        "roomCode",
+        "hostUid",
+        "name",
+        "score",
+        "streak",
+        "correctCount",
+        "answeredCount",
+        "lastRoundIndex",
+        "lastOption",
+        "lastCorrect",
+        "lastPoints",
+        "joinedAt",
+        "updatedAt"
+      ]
+    },
+    "BattleQuestion": {
+      "title": "BattleQuestion",
+      "description": "Question snapshot stored inside a battle room so custom and image questions render identically across devices.",
+      "type": "object",
+      "properties": {
+        "roomCode": { "type": "string", "minLength": 6, "maxLength": 6 },
+        "hostUid": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "index": { "type": "integer" },
+        "qId": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "sectorId": { "type": "string", "pattern": "^s[1-8]$" },
+        "subId": { "type": "string", "maxLength": 16 },
+        "q": { "type": "string", "minLength": 1, "maxLength": 2000 },
+        "options": { "type": "array" },
+        "ans": { "type": "integer" },
+        "exp": { "type": "string", "maxLength": 2000 },
+        "diagramId": { "type": "string", "maxLength": 64 },
+        "imageUrl": { "type": "string", "maxLength": 300000 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "roomCode",
+        "hostUid",
+        "index",
+        "qId",
+        "sectorId",
+        "subId",
+        "q",
+        "options",
+        "ans",
+        "exp",
+        "diagramId",
+        "imageUrl",
+        "createdAt"
+      ]
+    },
+    "UserCloudData": {
+      "title": "UserCloudData",
+      "description": "Cross-device synchronized profile progress, theme, mode, and audio settings per Firebase Auth UID.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "activeName": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "mode": { "type": "string", "enum": ["student", "projector"] },
+        "theme": { "type": "string", "enum": ["space", "bright", "cyber", "academy", "dark", "light"] },
+        "audioPrefs": { "type": "object" },
+        "profiles": { "type": "object" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "uid",
+        "activeName",
+        "mode",
+        "theme",
+        "audioPrefs",
+        "profiles",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "CustomQuestion": {
+      "title": "CustomQuestion",
+      "description": "User-imported Excel/Word question synced across devices via Firestore.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "id": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "sectorId": { "type": "string", "pattern": "^s[1-8]$" },
+        "subId": { "type": "string", "pattern": "^s[1-8]-[1-3]$" },
+        "q": { "type": "string", "minLength": 1, "maxLength": 2000 },
+        "options": { "type": "array" },
+        "ans": { "type": "integer" },
+        "exp": { "type": "string", "maxLength": 2000 },
+        "diagramId": { "type": "string", "maxLength": 64 },
+        "imageUrl": { "type": "string", "maxLength": 300000 },
+        "source": { "type": "string", "enum": ["excel", "word", "manual"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "uid",
+        "id",
+        "sectorId",
+        "subId",
+        "q",
+        "options",
+        "ans",
+        "exp",
+        "diagramId",
+        "imageUrl",
+        "source",
         "createdAt",
         "updatedAt"
       ]
@@ -133,10 +284,24 @@
   },
   "firestore": {
     "/battleRooms/{roomId}": {
-      "schema": {
-        "$ref": "#/entities/BattleRoom"
-      },
-      "description": "Multiplayer math battle rooms keyed by 6-char roomCode."
+      "schema": { "$ref": "#/entities/BattleRoom" },
+      "description": "Kahoot-style multiplayer math battle rooms keyed by 6-char roomCode."
+    },
+    "/battleRooms/{roomId}/players/{playerUid}": {
+      "schema": { "$ref": "#/entities/BattlePlayer" },
+      "description": "Individual participant records for zero-contention live scoring."
+    },
+    "/battleRooms/{roomId}/questions/{qIdx}": {
+      "schema": { "$ref": "#/entities/BattleQuestion" },
+      "description": "Snapshot of selected questions (including images) for the battle room."
+    },
+    "/userData/{userId}": {
+      "schema": { "$ref": "#/entities/UserCloudData" },
+      "description": "Cross-device user settings and student progress synchronized by Google Auth UID."
+    },
+    "/userData/{userId}/customQuestions/{questionId}": {
+      "schema": { "$ref": "#/entities/CustomQuestion" },
+      "description": "Cross-device custom/imported question bank items with optional images."
     }
   }
 }

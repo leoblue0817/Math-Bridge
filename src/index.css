@@ -15,26 +15,215 @@
   h1, h2, h3 {
     text-wrap: balance;
   }
+
+  /* Global physical tactile button feedback */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  label[for],
+  label:has(> input[type="file"]) {
+    transition:
+      transform 110ms cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 140ms ease,
+      background-color 150ms ease,
+      border-color 150ms ease,
+      color 140ms ease,
+      filter 120ms ease;
+    cursor: pointer;
+  }
+
+  button:not(:disabled):hover,
+  [role="button"]:not([aria-disabled="true"]):hover {
+    transform: translateY(-1px);
+  }
+
+  button:not(:disabled):active,
+  [role="button"]:not([aria-disabled="true"]):active,
+  label:has(> input[type="file"]):active {
+    transform: translateY(1.5px) scale(0.968);
+    filter: brightness(0.95);
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+  }
 }
 
 .tabular-nums {
   font-variant-numeric: tabular-nums;
 }
 
-/* Dark mode orbital coordinate grid backdrop */
-.dark .space-grid-bg {
-  background-color: #070B14;
+/* 1. 動感太空 (Deep Cosmic Nebula & 2.5D Telemetry Grid) */
+.space-grid-bg {
+  background-color: #030714;
   background-image:
-    radial-gradient(circle at 30% 42%, rgba(14, 165, 233, 0.14) 0%, rgba(15, 23, 42, 0) 52%),
-    radial-gradient(circle at 78% 18%, rgba(139, 92, 246, 0.12) 0%, rgba(15, 23, 42, 0) 45%),
-    linear-gradient(to right, rgba(56, 189, 248, 0.04) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(56, 189, 248, 0.04) 1px, transparent 1px);
-  background-size: 100% 100%, 100% 100%, 48px 48px, 48px 48px;
+    radial-gradient(ellipse 68% 55% at 18% 28%, rgba(14, 165, 233, 0.24) 0%, rgba(14, 165, 233, 0) 64%),
+    radial-gradient(ellipse 56% 48% at 78% 18%, rgba(139, 92, 246, 0.24) 0%, rgba(139, 92, 246, 0) 62%),
+    radial-gradient(ellipse 58% 45% at 62% 84%, rgba(20, 184, 166, 0.16) 0%, rgba(20, 184, 166, 0) 60%),
+    radial-gradient(circle at 36% 48%, rgba(56, 189, 248, 0.12) 0%, transparent 45%),
+    linear-gradient(125deg, rgba(56, 189, 248, 0.045) 1px, transparent 1px),
+    linear-gradient(55deg, rgba(167, 139, 250, 0.035) 1px, transparent 1px);
+  background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%, 56px 56px, 56px 56px;
 }
 
-/* Light mode atmospheric sky backdrop inspired by learning planet */
+/* 2. 星晝晨光 (High-Altitude Cosmic Daylight Atmosphere) */
 .light-sky-bg {
-  background: radial-gradient(circle at 24% 48%, #a6d5f2 0%, #cde7f8 42%, #eef6fc 78%, #f8fafc 100%);
+  background-color: #BAE6FD;
+  background-image:
+    radial-gradient(ellipse 68% 52% at 50% 42%, rgba(255, 255, 255, 0.56) 0%, rgba(186, 230, 253, 0) 68%),
+    radial-gradient(ellipse 46% 38% at 84% 16%, rgba(254, 240, 138, 0.52) 0%, rgba(254, 240, 138, 0) 62%),
+    radial-gradient(ellipse 72% 48% at 18% 82%, rgba(56, 189, 248, 0.28) 0%, rgba(186, 230, 253, 0) 70%),
+    linear-gradient(180deg, #0284C7 0%, #38BDF8 34%, #93DEFF 70%, #E0F2FE 100%);
+}
+
+/* Floating Glassmorphism HUD Panels */
+.glass-hud-panel {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.76) 0%, rgba(240, 249, 255, 0.62) 100%);
+  backdrop-filter: blur(22px) saturate(165%);
+  -webkit-backdrop-filter: blur(22px) saturate(165%);
+  border: 1px solid rgba(255, 255, 255, 0.78);
+  box-shadow:
+    0 18px 42px -18px rgba(12, 74, 110, 0.24),
+    0 2px 10px -2px rgba(14, 165, 233, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.94);
+}
+
+.dark .glass-hud-panel {
+  background: linear-gradient(155deg, rgba(13, 24, 50, 0.66) 0%, rgba(6, 12, 28, 0.54) 100%);
+  backdrop-filter: blur(22px) saturate(160%);
+  -webkit-backdrop-filter: blur(22px) saturate(160%);
+  border: 1px solid rgba(125, 211, 252, 0.22);
+  box-shadow:
+    0 20px 50px -16px rgba(2, 6, 23, 0.82),
+    0 0 28px -10px rgba(34, 211, 238, 0.18),
+    inset 0 1px 0 rgba(224, 242, 254, 0.18);
+}
+
+.glass-hud-corner {
+  background: linear-gradient(150deg, rgba(255, 255, 255, 0.72) 0%, rgba(235, 247, 255, 0.56) 100%);
+  backdrop-filter: blur(20px) saturate(170%);
+  -webkit-backdrop-filter: blur(20px) saturate(170%);
+  border: 1px solid rgba(255, 255, 255, 0.78);
+  box-shadow:
+    0 18px 40px -18px rgba(12, 74, 110, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
+}
+
+.dark .glass-hud-corner {
+  background: linear-gradient(155deg, rgba(12, 22, 46, 0.62) 0%, rgba(5, 10, 25, 0.5) 100%);
+  backdrop-filter: blur(22px) saturate(165%);
+  -webkit-backdrop-filter: blur(22px) saturate(165%);
+  border: 1px solid rgba(125, 211, 252, 0.24);
+  box-shadow:
+    0 22px 48px -18px rgba(2, 6, 23, 0.85),
+    0 0 26px -12px rgba(34, 211, 238, 0.22),
+    inset 0 1px 0 rgba(224, 242, 254, 0.16);
+}
+
+/* Crisp RGBA HUD surface without backdrop-filter for active WebGL stages */
+.webgl-hud-surface {
+  background: linear-gradient(155deg, rgba(248, 252, 255, 0.9) 0%, rgba(224, 242, 254, 0.84) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.86);
+  box-shadow:
+    0 18px 40px -16px rgba(12, 74, 110, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.96);
+}
+
+.dark .webgl-hud-surface {
+  background: linear-gradient(155deg, rgba(11, 20, 42, 0.86) 0%, rgba(5, 10, 24, 0.82) 100%);
+  border: 1px solid rgba(125, 211, 252, 0.26);
+  box-shadow:
+    0 22px 48px -18px rgba(2, 6, 23, 0.9),
+    0 0 24px -10px rgba(34, 211, 238, 0.2),
+    inset 0 1px 0 rgba(224, 242, 254, 0.14);
+}
+
+.glass-hud-tile {
+  background: linear-gradient(150deg, rgba(255, 255, 255, 0.82) 0%, rgba(241, 248, 255, 0.66) 100%);
+  backdrop-filter: blur(14px) saturate(150%);
+  -webkit-backdrop-filter: blur(14px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, 0.78);
+  box-shadow:
+    0 10px 22px -12px rgba(12, 74, 110, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
+}
+
+.dark .glass-hud-tile {
+  background: linear-gradient(150deg, rgba(19, 32, 64, 0.64) 0%, rgba(9, 16, 36, 0.54) 100%);
+  backdrop-filter: blur(14px) saturate(150%);
+  -webkit-backdrop-filter: blur(14px) saturate(150%);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  box-shadow:
+    0 12px 26px -14px rgba(2, 6, 23, 0.78),
+    inset 0 1px 0 rgba(224, 242, 254, 0.12);
+}
+
+/* 3D Isometric Extruded Node Card Hover Physics */
+.iso-node-card {
+  transition:
+    transform 240ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 240ms ease,
+    border-color 200ms ease,
+    background 200ms ease;
+  box-shadow:
+    0 4px 0 rgba(14, 116, 144, 0.16),
+    0 12px 24px -12px rgba(12, 74, 110, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.92);
+}
+
+.dark .iso-node-card {
+  box-shadow:
+    0 4px 0 rgba(2, 6, 23, 0.65),
+    0 14px 28px -14px rgba(2, 6, 23, 0.85),
+    inset 0 1px 0 rgba(224, 242, 254, 0.14);
+}
+
+.iso-node-card:hover {
+  transform: translateY(-4px) scale(1.018);
+}
+
+/* Esports Metallic High-Gloss Progress Bar */
+.esports-progress-track {
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.12) 0%, rgba(15, 23, 42, 0.06) 100%);
+  box-shadow: inset 0 1px 3px rgba(15, 23, 42, 0.22);
+}
+
+.dark .esports-progress-track {
+  background: linear-gradient(180deg, rgba(2, 6, 23, 0.88) 0%, rgba(15, 23, 42, 0.75) 100%);
+  box-shadow:
+    inset 0 1px 4px rgba(0, 0, 0, 0.7),
+    0 0 0 1px rgba(148, 163, 184, 0.18);
+}
+
+.esports-progress-fill {
+  position: relative;
+  overflow: hidden;
+  background-image: linear-gradient(
+    90deg,
+    var(--bar-from, #0EA5E9) 0%,
+    var(--bar-mid, #22D3EE) 55%,
+    var(--bar-to, #FDE047) 100%
+  );
+  box-shadow: 0 0 14px var(--bar-glow, rgba(34, 211, 238, 0.6));
+}
+
+.esports-progress-fill::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    110deg,
+    transparent 20%,
+    rgba(255, 255, 255, 0.52) 48%,
+    transparent 76%
+  );
+  transform: translateX(-100%);
+  animation: esports-sweep 2.8s ease-in-out infinite;
+}
+
+/* GPU-composited Diorama Camera Zoom Stage */
+.diorama-camera-stage {
+  transition: transform 650ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
 }
 
 /* Compositor-only orbital and fairy animations */
@@ -260,6 +449,21 @@
   }
 }
 
+@keyframes podium-rise {
+  0% {
+    opacity: 0;
+    transform: translateY(28px) scale(0.94);
+  }
+  70% {
+    opacity: 1;
+    transform: translateY(-4px) scale(1.02);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 .animate-radar-sweep {
   animation: radar-sweep 16s linear infinite;
 }
@@ -270,6 +474,266 @@
 
 .animate-combo-pop {
   animation: combo-pop 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.animate-podium-rise {
+  animation: podium-rise 0.65s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes esports-sweep {
+  0% {
+    transform: translateX(-110%);
+  }
+  55%, 100% {
+    transform: translateX(130%);
+  }
+}
+
+@keyframes nebula-drift {
+  0%, 100% {
+    transform: translate3d(0px, 0px, 0px) scale(1);
+    opacity: 0.72;
+  }
+  50% {
+    transform: translate3d(18px, -12px, 0px) scale(1.06);
+    opacity: 0.94;
+  }
+}
+
+@keyframes island-float-bob {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes target-lock-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes waterfall-shimmer {
+  0%, 100% {
+    opacity: 0.65;
+    transform: translateY(0px);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(3px);
+  }
+}
+
+.animate-nebula-drift {
+  animation: nebula-drift 11s ease-in-out infinite;
+}
+
+.animate-island-bob {
+  animation: island-float-bob 3.6s ease-in-out infinite;
+}
+
+.animate-target-lock {
+  animation: target-lock-spin 12s linear infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.animate-waterfall-shimmer {
+  animation: waterfall-shimmer 2.1s ease-in-out infinite;
+}
+
+@keyframes planet-levitate {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-9px);
+  }
+}
+
+@keyframes flag-wave {
+  0%, 100% {
+    transform: skewY(0deg) scaleX(1);
+  }
+  50% {
+    transform: skewY(-5deg) scaleX(0.92);
+  }
+}
+
+@keyframes river-flow {
+  from {
+    stroke-dashoffset: 48;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes ripple-expand {
+  0% {
+    transform: scale(0.72);
+    opacity: 0.85;
+  }
+  100% {
+    transform: scale(1.45);
+    opacity: 0;
+  }
+}
+
+@keyframes lighthouse-sweep {
+  0%, 100% {
+    transform: rotate(-16deg);
+    opacity: 0.72;
+  }
+  50% {
+    transform: rotate(18deg);
+    opacity: 0.98;
+  }
+}
+
+@keyframes sea-rock {
+  0%, 100% {
+    transform: translateY(0px) rotate(-2.5deg);
+  }
+  50% {
+    transform: translateY(-4px) rotate(2.5deg);
+  }
+}
+
+@keyframes thruster-flicker {
+  0%, 100% {
+    transform: scaleY(1) scaleX(1);
+    opacity: 0.82;
+  }
+  50% {
+    transform: scaleY(1.28) scaleX(0.88);
+    opacity: 1;
+  }
+}
+
+@keyframes shuttle-orbit-drift {
+  0%, 100% {
+    transform: translate(0px, 0px) rotate(-18deg);
+  }
+  50% {
+    transform: translate(26px, -16px) rotate(-12deg);
+  }
+}
+
+@keyframes shooting-star-streak {
+  0% {
+    transform: translate(-60px, -36px);
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.95;
+  }
+  50% {
+    transform: translate(110px, 66px);
+    opacity: 0;
+  }
+  100% {
+    transform: translate(110px, 66px);
+    opacity: 0;
+  }
+}
+
+@keyframes radar-dish-nod {
+  0%, 100% {
+    transform: rotate(-34deg);
+  }
+  50% {
+    transform: rotate(-18deg);
+  }
+}
+
+@keyframes animate-planet-rotate {
+  0% {
+    transform: perspective(1400px) rotateY(0deg);
+  }
+  100% {
+    transform: perspective(1400px) rotateY(360deg);
+  }
+}
+
+.animate-planet-rotate {
+  animation: animate-planet-rotate 34s linear infinite;
+  transform-style: preserve-3d;
+  backface-visibility: visible;
+  will-change: transform;
+}
+
+.animate-planet-rotate:hover {
+  animation-play-state: paused;
+}
+
+.animate-planet-levitate {
+  animation: planet-levitate 5.8s ease-in-out infinite;
+}
+
+.animate-flag-wave {
+  animation: flag-wave 2.1s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: left center;
+}
+
+.animate-river-flow {
+  animation: river-flow 1.4s linear infinite;
+}
+
+.animate-ripple-expand {
+  animation: ripple-expand 2.2s ease-out infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.animate-lighthouse-sweep {
+  animation: lighthouse-sweep 4.6s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: 0% 50%;
+}
+
+.animate-sea-rock {
+  animation: sea-rock 3.4s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.animate-thruster-flicker {
+  animation: thruster-flicker 0.9s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: center top;
+}
+
+.animate-shuttle-drift {
+  animation: shuttle-orbit-drift 5.2s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.animate-shooting-star {
+  animation: shooting-star-streak 6.4s ease-out infinite;
+}
+
+.animate-radar-nod {
+  animation: radar-dish-nod 4.2s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: center bottom;
+}
+
+.iso-svg-node {
+  transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1), opacity 280ms ease;
+  transform-box: fill-box;
+  transform-origin: center bottom;
+}
+
+.iso-svg-node:hover {
+  transform: translateY(-6px) scale(1.11);
 }
 
 @media (prefers-reduced-motion: reduce) {
