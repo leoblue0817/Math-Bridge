@@ -7,7 +7,6 @@ import {
   BookMarked,
   ChevronDown,
   ChevronUp,
-  Compass,
   Crosshair,
   Flag,
   LayoutGrid,
@@ -270,6 +269,7 @@ export function PlanetHomeView({
   const [dockOpen, setDockOpen] = useState(() =>
     typeof window !== 'undefined' ? window.innerWidth >= 768 : true
   );
+  const [mobileControlsOpen, setMobileControlsOpen] = useState(false);
 
   const canvasMountRef = useRef<HTMLDivElement | null>(null);
   const labelRefs = useRef<Partial<Record<SectorId, HTMLButtonElement | null>>>({});
@@ -1192,7 +1192,7 @@ export function PlanetHomeView({
       const canvasW = container.clientWidth;
       const canvasH = container.clientHeight;
       const isNarrow = canvasW < 768;
-      const topPad = isNarrow ? 74 : 70;
+      const topPad = isNarrow ? 58 : 62;
       const bottomPad = isNarrow ? 152 : 42;
       const sidePad = isNarrow ? 34 : 44;
 
@@ -1341,31 +1341,85 @@ export function PlanetHomeView({
       </div>
 
       {/* ================= TOP-LEFT COMPACT ACHIEVEMENT WALL HUD (NO BACKDROP BLUR) ================= */}
-      <div className="pointer-events-none absolute top-2 left-2.5 z-20 flex max-w-[calc(100%-175px)] flex-col gap-2 sm:top-3 sm:left-4 sm:max-w-[330px]">
+      <div className="pointer-events-none absolute top-2 left-2.5 z-20 flex max-w-[calc(100%-150px)] flex-col gap-2 sm:top-3 sm:left-4 sm:max-w-[330px]">
         <div className="pointer-events-auto">
           <AchievementWallBar profile={profile} theme={theme} variant="corner" noBlur />
-        </div>
-        <div className="webgl-hud-surface pointer-events-auto hidden items-center gap-2 rounded-xl px-3 py-1.5 text-[11px] font-semibold text-slate-700 md:inline-flex dark:text-slate-200">
-          <Compass className="h-3.5 w-3.5 text-sky-600 dark:text-cyan-300" aria-hidden="true" />
-          <span>拖曳 360° 環視宇宙 · 滾輪縮放 · 點擊星球飛近登陸</span>
         </div>
       </div>
 
       {/* ================= TOP-RIGHT COMPACT SYSTEM CONTROLS HUD (NO BACKDROP BLUR) ================= */}
       <div className="pointer-events-none absolute top-2 right-2.5 z-20 flex flex-col items-end gap-2 sm:top-3 sm:right-4">
-        <div className="webgl-hud-surface pointer-events-auto flex flex-wrap items-center justify-end gap-1 rounded-2xl p-1 sm:gap-1.5 sm:p-1.5">
+        {/* Mobile (<768px): Single compact capsule button + floating popover */}
+        <button
+          type="button"
+          onClick={() => setMobileControlsOpen((v) => !v)}
+          aria-expanded={mobileControlsOpen}
+          aria-label="展開或收合音效與學習模式設定"
+          className="webgl-hud-surface pointer-events-auto inline-flex min-h-[38px] items-center gap-1.5 rounded-2xl px-3 py-1.5 text-xs font-bold text-slate-800 shadow-md transition-colors hover:border-sky-400/60 md:hidden dark:text-slate-100"
+        >
+          <SlidersHorizontal className="h-3.5 w-3.5 text-sky-600 dark:text-cyan-300" aria-hidden="true" />
+          <span>音效 · {mode === 'projector' ? '投影' : '自學'}</span>
+          {mobileControlsOpen ? (
+            <ChevronUp className="h-3.5 w-3.5 text-slate-500 dark:text-slate-300" aria-hidden="true" />
+          ) : (
+            <ChevronDown className="h-3.5 w-3.5 text-slate-500 dark:text-slate-300" aria-hidden="true" />
+          )}
+        </button>
+
+        {mobileControlsOpen && (
+          <div className="webgl-hud-surface pointer-events-auto flex w-[236px] flex-col gap-2.5 rounded-2xl p-3 shadow-2xl md:hidden">
+            <div className="flex items-center justify-between border-b border-slate-300/60 pb-1.5 dark:border-slate-700/70">
+              <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300">
+                音效與背景配樂
+              </span>
+              <button
+                type="button"
+                onClick={() => setMobileControlsOpen(false)}
+                aria-label="關閉設定選單"
+                className="rounded-lg p-1 text-slate-500 hover:bg-slate-900/5 dark:text-slate-300 dark:hover:bg-white/10"
+              >
+                <X className="h-3.5 w-3.5" aria-hidden="true" />
+              </button>
+            </div>
+            <div className="flex flex-wrap items-center gap-1.5">
+              <AudioToggleButtons compact />
+            </div>
+            <div className="flex items-center justify-between border-t border-slate-300/60 pt-2 dark:border-slate-700/70">
+              <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300">
+                檢視模式
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  onChangeMode(mode === 'student' ? 'projector' : 'student');
+                  setMobileControlsOpen(false);
+                }}
+                className={`inline-flex min-h-[34px] items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-colors ${
+                  mode === 'projector'
+                    ? 'bg-sky-600 text-white'
+                    : 'bg-slate-900/10 text-slate-800 hover:bg-sky-500/15 dark:bg-white/10 dark:text-slate-100'
+                }`}
+              >
+                <span>{mode === 'projector' ? '教室投影模式' : '學生自學模式'}</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Desktop / Tablet (md+): Full horizontal system controls toolbar */}
+        <div className="webgl-hud-surface pointer-events-auto hidden flex-wrap items-center justify-end gap-1.5 rounded-2xl p-1.5 md:flex">
           <button
             type="button"
             onClick={() => onToggleTheme(getNextThemeMode(theme))}
             title={`點擊切換光源：${themeMeta.label}`}
-            className="inline-flex min-h-[36px] items-center gap-1 rounded-xl bg-slate-900/5 px-2 py-1.5 text-[11px] font-bold text-slate-800 transition-colors hover:bg-sky-500/15 sm:min-h-0 sm:gap-1.5 sm:px-2.5 dark:bg-white/10 dark:text-white dark:hover:bg-cyan-500/20"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-slate-900/5 px-2.5 py-1.5 text-[11px] font-bold text-slate-800 transition-colors hover:bg-sky-500/15 dark:bg-white/10 dark:text-white dark:hover:bg-cyan-500/20"
           >
             {isDark ? (
               <Moon className="h-3.5 w-3.5 text-cyan-300" aria-hidden="true" />
             ) : (
               <Sun className="h-3.5 w-3.5 text-amber-500" aria-hidden="true" />
             )}
-            <span className="hidden sm:inline">{themeMeta.label}</span>
+            <span>{themeMeta.label}</span>
           </button>
 
           <AudioToggleButtons compact />
@@ -1373,29 +1427,28 @@ export function PlanetHomeView({
           <button
             type="button"
             onClick={() => onChangeMode(mode === 'student' ? 'projector' : 'student')}
-            className={`inline-flex min-h-[36px] items-center gap-1 rounded-xl px-2 py-1.5 text-[11px] font-bold transition-colors sm:min-h-0 sm:px-2.5 ${
+            className={`inline-flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-[11px] font-bold transition-colors ${
               mode === 'projector'
                 ? 'bg-sky-600 text-white'
                 : 'bg-slate-900/5 text-slate-800 hover:bg-sky-500/15 dark:bg-white/10 dark:text-slate-100'
             }`}
           >
-            <span className="sm:hidden">{mode === 'projector' ? '投影' : '自學'}</span>
-            <span className="hidden sm:inline">{mode === 'projector' ? '教室投影' : '學生自學'}</span>
+            <span>{mode === 'projector' ? '教室投影' : '學生自學'}</span>
           </button>
 
           <button
             type="button"
             onClick={onOpenBattle}
-            className="hidden items-center gap-1 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 px-2.5 py-1.5 text-[11px] font-extrabold text-white shadow-sm transition-transform hover:scale-105 md:inline-flex"
+            className="inline-flex items-center gap-1 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 px-2.5 py-1.5 text-[11px] font-extrabold text-white shadow-sm transition-transform hover:scale-105"
           >
             <Swords className="h-3.5 w-3.5" aria-hidden="true" />
-            <span className="hidden md:inline">多人搶答</span>
+            <span>多人搶答</span>
           </button>
 
           <button
             type="button"
             onClick={onOpenWrongModal}
-            className="hidden items-center gap-1 rounded-xl bg-slate-900/5 px-2.5 py-1.5 text-[11px] font-bold text-slate-800 hover:bg-rose-500/15 md:inline-flex dark:bg-white/10 dark:text-slate-100"
+            className="inline-flex items-center gap-1 rounded-xl bg-slate-900/5 px-2.5 py-1.5 text-[11px] font-bold text-slate-800 hover:bg-rose-500/15 dark:bg-white/10 dark:text-slate-100"
           >
             <BookMarked className="h-3.5 w-3.5 text-rose-500 dark:text-rose-400" aria-hidden="true" />
             <span className="font-mono">{wrongCount}</span>
@@ -1405,7 +1458,7 @@ export function PlanetHomeView({
             type="button"
             onClick={onOpenProgressModal}
             aria-label="題庫與雲端管理"
-            className="hidden items-center gap-1 rounded-xl bg-slate-900/5 px-2.5 py-1.5 text-[11px] font-bold text-slate-800 hover:bg-sky-500/15 md:inline-flex dark:bg-white/10 dark:text-slate-100"
+            className="inline-flex items-center gap-1 rounded-xl bg-slate-900/5 px-2.5 py-1.5 text-[11px] font-bold text-slate-800 hover:bg-sky-500/15 dark:bg-white/10 dark:text-slate-100"
           >
             <SlidersHorizontal className="h-3.5 w-3.5 text-sky-600 dark:text-cyan-300" aria-hidden="true" />
             <span className="hidden xl:inline">題庫雲端</span>

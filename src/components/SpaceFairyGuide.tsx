@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { MessageCircle, RefreshCw, Sparkles, X } from 'lucide-react';
+import { ChevronUp, MessageCircle, RefreshCw, Sparkles, X } from 'lucide-react';
 import { SectorData, SubLesson } from '../data/sectors';
 import { AppMode, TerminalTab, ThemeMode, isDarkTheme } from '../types';
 
@@ -16,9 +16,10 @@ interface SpaceFairyGuideProps {
   totalSystemStars: number;
 }
 
-function FairySprite({ isDark }: { isDark: boolean }) {
+function FairySprite({ isDark, compact = false }: { isDark: boolean; compact?: boolean }) {
+  const size = compact ? 26 : 44;
   return (
-    <svg width="46" height="46" viewBox="0 0 64 64" className="animate-fairy-float shrink-0" aria-hidden="true">
+    <svg width={size} height={size} viewBox="0 0 64 64" className="animate-fairy-float shrink-0" aria-hidden="true">
       {/* Translucent Star Wings */}
       <path
         d="M 22 30 Q 4 14 8 34 Q 12 44 24 38 Z"
@@ -112,7 +113,7 @@ export function SpaceFairyGuide({
 
   const currentTip = tips[tipSeed % tips.length] ?? tips[0];
   const positionClass = isPlanetHome
-    ? 'fixed right-2.5 bottom-[calc(146px+env(safe-area-inset-bottom))] z-30 md:right-4 md:bottom-[108px]'
+    ? 'fixed right-2.5 bottom-[calc(146px+env(safe-area-inset-bottom))] z-30 md:right-4 md:bottom-3.5'
     : hasMobileBottomNav
     ? 'fixed right-3 bottom-[calc(70px+env(safe-area-inset-bottom))] z-30 md:right-5 md:bottom-5'
     : 'fixed right-3 bottom-4 z-40 md:right-5 md:bottom-5';
@@ -123,15 +124,13 @@ export function SpaceFairyGuide({
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className={`${positionClass} ${surfaceClass} inline-flex min-h-[44px] items-center gap-1.5 rounded-2xl px-2.5 py-1.5 text-xs font-bold text-slate-900 shadow-lg transition-transform hover:scale-105 md:gap-2 md:px-3.5 md:py-2 dark:text-white`}
+        className={`${positionClass} ${surfaceClass} inline-flex min-h-[38px] items-center gap-1.5 rounded-2xl px-3 py-1 text-xs font-bold text-slate-900 shadow-md transition-colors hover:border-sky-400/60 dark:text-white dark:hover:border-cyan-400/50`}
         aria-label="展開Blue老師小精靈提示"
       >
-        <FairySprite isDark={isDark} />
-        <div className="hidden text-left sm:block">
-          <div className="text-[11px] font-semibold text-sky-700 dark:text-cyan-300">課堂巡遊小精靈</div>
-          <div>Blue老師小叮嚀</div>
-        </div>
-        <span className="text-[11px] font-extrabold sm:hidden">小叮嚀</span>
+        <FairySprite isDark={isDark} compact />
+        <span className="hidden whitespace-nowrap sm:inline">Blue老師小叮嚀</span>
+        <span className="whitespace-nowrap text-[11px] font-extrabold sm:hidden">小叮嚀</span>
+        <ChevronUp className="h-3.5 w-3.5 text-slate-500 dark:text-slate-300" aria-hidden="true" />
       </button>
     );
   }
