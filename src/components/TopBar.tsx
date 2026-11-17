@@ -34,8 +34,8 @@ export function TopBar({
   const isDark = isDarkTheme(theme);
 
   return (
-    <header className="sticky top-2.5 z-30 mx-auto w-full max-w-[1600px] px-4 sm:px-5">
-      <div className="glass-hud-panel flex items-center justify-between gap-6 rounded-2xl px-5 py-2.5">
+    <header className="sticky top-1.5 z-30 mx-auto w-full max-w-[1600px] px-2.5 sm:top-2.5 sm:px-5">
+      <div className="glass-hud-panel flex items-center justify-between gap-2 rounded-2xl px-3.5 py-1.5 sm:gap-6 sm:px-5 sm:py-2.5">
         {/* Zone 1: Single text element Brand wordmark */}
         <button
           type="button"
@@ -43,12 +43,12 @@ export function TopBar({
             soundEngine.playClick();
             onGoHomePlanet();
           }}
-          className="shrink-0 whitespace-nowrap text-left text-base font-extrabold tracking-tight text-slate-900 transition-colors hover:text-sky-600 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-sky-500 sm:text-lg dark:text-slate-50 dark:hover:text-cyan-300 dark:focus-visible:outline-cyan-400"
+          className="min-h-[38px] shrink-0 whitespace-nowrap text-left text-sm font-extrabold tracking-tight text-slate-900 transition-colors hover:text-sky-600 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-sky-500 sm:text-lg dark:text-slate-50 dark:hover:text-cyan-300 dark:focus-visible:outline-cyan-400"
         >
           星際數學領航艦
         </button>
 
-        {/* Zone 2: 5 concise single-line nav links */}
+        {/* Zone 2: 5 concise single-line nav links (Desktop & Tablet) */}
         <nav aria-label="主導覽列" className="hidden items-center gap-6 md:flex">
           <button
             type="button"
@@ -118,7 +118,7 @@ export function TopBar({
           </button>
         </nav>
 
-        {/* Zone 3: Click-to-cycle Day/Night space lighting button */}
+        {/* Zone 3: Click-to-cycle Day/Night space lighting button OR Return Home */}
         <div className="shrink-0">
           {activeSectorId ? (
             <button
@@ -127,9 +127,10 @@ export function TopBar({
                 soundEngine.playClick();
                 onGoHomePlanet();
               }}
-              className="shrink-0 whitespace-nowrap rounded-xl border border-sky-500/40 bg-sky-500/15 px-4 py-1.5 text-sm font-bold text-sky-900 transition-colors hover:bg-sky-500/25 dark:border-cyan-400/40 dark:bg-cyan-500/15 dark:text-cyan-200 dark:hover:bg-cyan-500/25"
+              className="min-h-[38px] shrink-0 whitespace-nowrap rounded-xl border border-sky-500/40 bg-sky-500/15 px-3 py-1.5 text-xs font-bold text-sky-900 transition-colors hover:bg-sky-500/25 sm:px-4 sm:text-sm dark:border-cyan-400/40 dark:bg-cyan-500/15 dark:text-cyan-200 dark:hover:bg-cyan-500/25"
             >
-              返回微縮主星
+              <span className="sm:hidden">返回主星</span>
+              <span className="hidden sm:inline">返回微縮主星</span>
             </button>
           ) : (
             <button
@@ -139,14 +140,15 @@ export function TopBar({
                 onToggleTheme();
               }}
               title="點按切換「星夜極光」／「星晝晨光」星際日夜光源"
-              className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-xl border border-sky-300/70 bg-white/80 px-3 py-1.5 text-xs font-bold text-slate-800 shadow-sm transition-colors hover:border-sky-500 dark:border-cyan-400/35 dark:bg-slate-900/75 dark:text-slate-100 dark:hover:border-cyan-300"
+              className="inline-flex min-h-[38px] shrink-0 items-center gap-1.5 whitespace-nowrap rounded-xl border border-sky-300/70 bg-white/80 px-2.5 py-1.5 text-xs font-bold text-slate-800 shadow-sm transition-colors hover:border-sky-500 sm:px-3 dark:border-cyan-400/35 dark:bg-slate-900/75 dark:text-slate-100 dark:hover:border-cyan-300"
             >
               {isDark ? (
                 <Moon className="h-3.5 w-3.5 text-cyan-400" aria-hidden="true" />
               ) : (
                 <Sun className="h-3.5 w-3.5 text-amber-500" aria-hidden="true" />
               )}
-              <span>光源：{themeMeta.shortLabel} ↻</span>
+              <span className="sm:hidden">{themeMeta.shortLabel} ↻</span>
+              <span className="hidden sm:inline">光源：{themeMeta.shortLabel} ↻</span>
             </button>
           )}
         </div>

@@ -113,16 +113,16 @@ export function MindReaderCardsLab({ isCompleted, onComplete }: MindReaderCardsL
   };
 
   return (
-    <div className="space-y-6 rounded-2xl border border-slate-200 bg-white/95 p-6 shadow-sm dark:border-slate-800 dark:bg-[#0D1424] dark:shadow-none">
-      <div className="flex flex-col justify-between gap-4 border-b border-slate-200 pb-5 lg:flex-row lg:items-end dark:border-slate-800">
+    <div className="space-y-5 rounded-2xl border border-slate-200 bg-white/95 p-3.5 shadow-sm sm:space-y-6 sm:p-6 dark:border-slate-800 dark:bg-[#0D1424] dark:shadow-none">
+      <div className="flex flex-col justify-between gap-4 border-b border-slate-200 pb-4 sm:pb-5 lg:flex-row lg:items-end dark:border-slate-800">
         <div>
           <p className="text-xs font-semibold text-sky-700 dark:text-cyan-400">
             創意課程 · 主題 2 指數與二進位密碼
           </p>
-          <h3 className="mt-1 text-xl font-bold text-slate-900 dark:text-white">
+          <h3 className="mt-1 text-lg font-bold text-slate-900 sm:text-xl dark:text-white">
             懂你的心－二進位魔術卡（A～E）
           </h3>
-          <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+          <p className="mt-1 text-xs leading-relaxed text-slate-600 sm:text-sm dark:text-slate-300">
             在心裡想一個 1～31 的整數，勾選包含該數字的卡片，就能瞬間透過 2 的次方算出答案！
           </p>
         </div>
@@ -131,7 +131,7 @@ export function MindReaderCardsLab({ isCompleted, onComplete }: MindReaderCardsL
           <button
             type="button"
             onClick={() => setLabMode('magic')}
-            className={`inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-semibold ${
+            className={`inline-flex min-h-[40px] items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-semibold ${
               labMode === 'magic'
                 ? 'bg-sky-600 text-white dark:bg-cyan-500 dark:text-slate-950'
                 : 'border border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300'
@@ -143,7 +143,7 @@ export function MindReaderCardsLab({ isCompleted, onComplete }: MindReaderCardsL
           <button
             type="button"
             onClick={() => setLabMode('challenge')}
-            className={`inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-semibold ${
+            className={`inline-flex min-h-[40px] items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-semibold ${
               labMode === 'challenge'
                 ? 'bg-amber-500 text-white dark:bg-amber-400 dark:text-slate-950'
                 : 'border border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300'
@@ -203,7 +203,7 @@ export function MindReaderCardsLab({ isCompleted, onComplete }: MindReaderCardsL
             })}
           </div>
 
-          <div className="flex flex-col justify-between gap-4 rounded-xl border border-slate-200 bg-slate-50 p-5 md:flex-row md:items-center dark:border-slate-800 dark:bg-[#080D1A]">
+          <div className="flex flex-col justify-between gap-4 rounded-xl border border-slate-200 bg-slate-50 p-3.5 sm:p-5 md:flex-row md:items-center dark:border-slate-800 dark:bg-[#080D1A]">
             <div className="space-y-1">
               <div className="text-xs text-slate-500 dark:text-slate-400">
                 已選取卡片：{' '}
@@ -218,14 +218,14 @@ export function MindReaderCardsLab({ isCompleted, onComplete }: MindReaderCardsL
                     {magicSum}
                   </span>
                   {magicSum > 0 && (
-                    <span className="ml-3 font-mono text-sm text-emerald-700 tabular-nums dark:text-emerald-300">
+                    <span className="mt-1 block font-mono text-sm text-emerald-700 tabular-nums sm:mt-0 sm:ml-3 sm:inline dark:text-emerald-300">
                       （拆解：{chosenList.map((c) => c.value).join(' ＋ ')} ＝ {magicSum}）
                     </span>
                   )}
                 </div>
               ) : (
                 <div className="text-sm text-slate-600 dark:text-slate-300">
-                  選好所有包含你心中數字的卡片後，按下右側「揭曉心中數字」見證奇蹟！
+                  選好所有包含你心中數字的卡片後，按下「揭曉心中數字」見證奇蹟！
                 </div>
               )}
             </div>
@@ -234,7 +234,7 @@ export function MindReaderCardsLab({ isCompleted, onComplete }: MindReaderCardsL
               <button
                 type="button"
                 onClick={resetMagic}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:border-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-500"
+                className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:border-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-500"
               >
                 <RotateCcw className="h-4 w-4" aria-hidden="true" />
                 <span>重選</span>
@@ -243,7 +243,7 @@ export function MindReaderCardsLab({ isCompleted, onComplete }: MindReaderCardsL
                 type="button"
                 onClick={handleRevealMagic}
                 disabled={chosenList.length === 0}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-sky-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-cyan-500 dark:text-slate-950 dark:hover:bg-cyan-400"
+                className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl bg-sky-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-cyan-500 dark:text-slate-950 dark:hover:bg-cyan-400"
               >
                 <Eye className="h-4 w-4" aria-hidden="true" />
                 <span>揭曉心中數字</span>
@@ -336,7 +336,7 @@ export function MindReaderCardsLab({ isCompleted, onComplete }: MindReaderCardsL
                 <button
                   type="button"
                   onClick={nextChallengeRound}
-                  className="rounded-xl bg-emerald-600 px-5 py-2 text-sm font-bold text-white hover:bg-emerald-700 dark:bg-emerald-500 dark:text-slate-950"
+                  className="min-h-[44px] rounded-xl bg-emerald-600 px-5 py-2 text-sm font-bold text-white hover:bg-emerald-700 dark:bg-emerald-500 dark:text-slate-950"
                 >
                   挑戰下一題 →
                 </button>
@@ -344,7 +344,7 @@ export function MindReaderCardsLab({ isCompleted, onComplete }: MindReaderCardsL
                 <button
                   type="button"
                   onClick={verifyChallenge}
-                  className="rounded-xl bg-amber-500 px-5 py-2 text-sm font-bold text-white hover:bg-amber-600 dark:bg-amber-400 dark:text-slate-950"
+                  className="min-h-[44px] rounded-xl bg-amber-500 px-5 py-2 text-sm font-bold text-white hover:bg-amber-600 dark:bg-amber-400 dark:text-slate-950"
                 >
                   檢查組合
                 </button>

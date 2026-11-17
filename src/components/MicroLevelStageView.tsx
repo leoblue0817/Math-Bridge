@@ -246,9 +246,9 @@ export function MicroLevelStageView({
       </div>
 
       {/* Active Micro-Level: Focused Key Summary + Dedicated Interactive 5-Question Quiz Arena */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+      <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-12">
         {/* Left: Micro-Lesson Key Summary */}
-        <aside className="rounded-2xl border border-slate-200 bg-white/95 p-6 shadow-sm lg:col-span-5 dark:border-slate-800 dark:bg-[#0D1424] dark:shadow-none">
+        <aside className="rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm sm:p-6 lg:col-span-5 dark:border-slate-800 dark:bg-[#0D1424] dark:shadow-none">
           <div className="inline-flex items-center gap-2 rounded-lg bg-sky-50 px-2.5 py-1 font-mono text-xs font-bold text-sky-700 dark:bg-cyan-500/15 dark:text-cyan-300">
             <span>小節 {activeSub.code}</span>
             {subProgress.completed && (
@@ -276,7 +276,7 @@ export function MicroLevelStageView({
 
         {/* Right: Micro-Quiz Arena with Combo Streak & Checkpoint Nodes */}
         <section
-          className={`rounded-2xl border border-slate-200 bg-white/95 p-6 shadow-sm lg:col-span-7 dark:border-slate-800 dark:bg-[#0D1424] dark:shadow-none ${
+          className={`rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm sm:p-6 lg:col-span-7 dark:border-slate-800 dark:bg-[#0D1424] dark:shadow-none ${
             shakeCard ? 'animate-wrong-shake border-rose-400 dark:border-rose-500' : ''
           }`}
         >
@@ -409,7 +409,7 @@ export function MicroLevelStageView({
                               setProjectorReveal(false);
                             }}
                             title={`切換至第 ${i + 1} 題`}
-                            className={`h-7 w-7 rounded-lg font-mono text-xs font-bold tabular-nums transition-transform ${
+                            className={`h-9 w-9 rounded-lg font-mono text-xs font-bold tabular-nums transition-transform sm:h-7 sm:w-7 ${
                               i === qPos
                                 ? 'scale-105 bg-sky-600 text-white ring-2 ring-sky-400/40 dark:bg-cyan-500 dark:text-slate-950'
                                 : answeredItem
@@ -476,7 +476,7 @@ export function MicroLevelStageView({
                       data-sfx="custom"
                       disabled={hasAnswered}
                       onClick={() => handleSelectOption(idx)}
-                      className={`flex items-center gap-3 rounded-xl border px-4 py-3 text-left text-sm font-medium transition-colors ${styleClass}`}
+                      className={`flex min-h-[48px] items-center gap-3 rounded-xl border px-4 py-3 text-left text-sm font-medium transition-colors ${styleClass}`}
                     >
                       <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-current/25 font-mono text-xs font-bold">
                         {String.fromCharCode(65 + idx)}

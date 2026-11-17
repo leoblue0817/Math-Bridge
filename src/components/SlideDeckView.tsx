@@ -20,6 +20,7 @@ export function SlideDeckView({
   const [revealedBlanks, setRevealedBlanks] = useState<Record<string, boolean>>({});
   const [isFullscreen, setIsFullscreen] = useState(false);
   const deckRef = useRef<HTMLDivElement | null>(null);
+  const touchStartXRef = useRef<number | null>(null);
 
   const slides = sector.slides;
   const current = slides[slideIdx];
@@ -76,8 +77,20 @@ export function SlideDeckView({
   return (
     <div
       ref={deckRef}
-      className={`flex flex-col justify-between rounded-2xl border border-slate-200 bg-white/95 p-6 shadow-sm md:p-8 dark:border-slate-800 dark:bg-[#0D1424] dark:shadow-none ${
-        isFullscreen ? 'min-h-screen' : 'min-h-[460px]'
+      onTouchStart={(e) => {
+        touchStartXRef.current = e.touches[0]?.clientX ?? null;
+      }}
+      onTouchEnd={(e) => {
+        if (touchStartXRef.current === null) return;
+        const endX = e.changedTouches[0]?.clientX ?? touchStartXRef.current;
+        const deltaX = endX - touchStartXRef.current;
+        touchStartXRef.current = null;
+        if (Math.abs(deltaX) < 52) return;
+        if (deltaX < 0) nextSlide();
+        else prevSlide();
+      }}
+      className={`flex flex-col justify-between rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm sm:p-6 md:p-8 dark:border-slate-800 dark:bg-[#0D1424] dark:shadow-none ${
+        isFullscreen ? 'min-h-dvh' : 'min-h-[420px] sm:min-h-[460px]'
       }`}
     >
       <div>
@@ -117,13 +130,13 @@ export function SlideDeckView({
             {current.title}
           </h2>
 
-          <ul className="mt-6 space-y-4">
+          <ul className="mt-5 space-y-3 sm:mt-6 sm:space-y-4">
             {current.bullets.map((line, i) => (
               <li
                 key={i}
-                className="flex items-start gap-3.5 rounded-xl border border-slate-200 bg-slate-50 px-5 py-4 text-base leading-relaxed text-slate-800 md:text-lg dark:border-slate-800/90 dark:bg-[#080D1A] dark:text-slate-100"
+                className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-relaxed text-slate-800 sm:gap-3.5 sm:px-5 sm:py-4 sm:text-base md:text-lg dark:border-slate-800/90 dark:bg-[#080D1A] dark:text-slate-100"
               >
-                <span className="mt-1 font-mono text-sm font-bold text-sky-600 tabular-nums dark:text-cyan-400">
+                <span className="mt-0.5 font-mono text-xs font-bold text-sky-600 tabular-nums sm:mt-1 sm:text-sm dark:text-cyan-400">
                   0{i + 1}
                 </span>
                 <span>{line}</span>
@@ -169,13 +182,13 @@ export function SlideDeckView({
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-4 border-t border-slate-200 pt-5 dark:border-slate-800">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 pt-4 sm:gap-4 sm:pt-5 dark:border-slate-800">
         <div className="flex items-center gap-2">
           <button
             type="button"
             disabled={slideIdx === 0}
             onClick={prevSlide}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:border-slate-400 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-500"
+            className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:border-slate-400 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-500"
           >
             <ChevronLeft className="h-4 w-4" aria-hidden="true" />
             <span>上一頁</span>
@@ -185,21 +198,21 @@ export function SlideDeckView({
             type="button"
             disabled={slideIdx >= slides.length - 1}
             onClick={nextSlide}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:border-slate-400 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-500"
+            className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:border-slate-400 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-500"
           >
             <span>下一頁</span>
             <ChevronRight className="h-4 w-4" aria-hidden="true" />
           </button>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex w-full flex-wrap items-center gap-2.5 sm:w-auto sm:gap-3">
           <button
             type="button"
             onClick={() => {
               soundEngine.playClick();
               onComplete();
             }}
-            className={`whitespace-nowrap rounded-xl px-4 py-2 text-sm font-semibold transition-colors ${
+            className={`min-h-[44px] flex-1 whitespace-nowrap rounded-xl px-4 py-2 text-sm font-semibold transition-colors sm:flex-initial ${
               isCompleted
                 ? 'border border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-500/40 dark:bg-emerald-500/15 dark:text-emerald-200'
                 : 'bg-amber-500 text-white hover:bg-amber-600 dark:bg-amber-400 dark:text-slate-950 dark:hover:bg-amber-300'
@@ -214,9 +227,9 @@ export function SlideDeckView({
               soundEngine.playClick();
               onGoNextTab();
             }}
-            className="whitespace-nowrap rounded-xl bg-sky-600 px-5 py-2 text-sm font-bold text-white hover:bg-sky-700 dark:bg-cyan-500 dark:text-slate-950 dark:hover:bg-cyan-400"
+            className="min-h-[44px] flex-1 whitespace-nowrap rounded-xl bg-sky-600 px-5 py-2 text-sm font-bold text-white hover:bg-sky-700 sm:flex-initial dark:bg-cyan-500 dark:text-slate-950 dark:hover:bg-cyan-400"
           >
-            前往熱身配對／佈置 →
+            前往熱身 →
           </button>
         </div>
       </div>

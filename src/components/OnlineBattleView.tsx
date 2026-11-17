@@ -129,6 +129,7 @@ interface OnlineBattleViewProps {
   onCycleTheme: () => void;
   onClaimBattleBonus: (roomCode: string, bonusScore: number, isWinner: boolean) => void;
   onBackToHome: () => void;
+  onRoomActiveChange?: (inRoom: boolean) => void;
 }
 
 const ROOM_CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -161,6 +162,7 @@ export function OnlineBattleView({
   onCycleTheme,
   onClaimBattleBonus,
   onBackToHome,
+  onRoomActiveChange,
 }: OnlineBattleViewProps) {
   const [user, setUser] = useState<FirebaseUser | null>(auth.currentUser);
   const [authLoading, setAuthLoading] = useState(true);
@@ -244,6 +246,11 @@ export function OnlineBattleView({
     );
     return () => unsub();
   }, [user]);
+
+  // Notify parent when entering/leaving an active room so MobileBottomNav can auto-hide
+  useEffect(() => {
+    onRoomActiveChange?.(Boolean(room));
+  }, [room, onRoomActiveChange]);
 
   // Subscribe to active room document
   useEffect(() => {
@@ -759,20 +766,20 @@ export function OnlineBattleView({
   const themeMeta = THEME_META[theme];
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6 px-6 pt-6">
+    <div className="mx-auto max-w-6xl space-y-4 px-3 pt-3 sm:space-y-6 sm:px-6 sm:pt-6">
       {/* Header Banner with Click-to-Cycle Audio & Theme Switchers (Zero Dropdowns) */}
-      <div className="glass-hud-panel flex flex-wrap items-center justify-between gap-4 rounded-3xl p-5">
-        <div className="flex items-center gap-3.5">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-amber-400/40 bg-amber-500/15 text-amber-600 dark:text-amber-300">
-            <Swords className="h-6 w-6" aria-hidden="true" />
+      <div className="glass-hud-panel flex flex-wrap items-center justify-between gap-3 rounded-2xl p-3.5 sm:gap-4 sm:rounded-3xl sm:p-5">
+        <div className="flex min-w-0 items-center gap-3 sm:gap-3.5">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-amber-400/40 bg-amber-500/15 text-amber-600 sm:h-12 sm:w-12 sm:rounded-2xl dark:text-amber-300">
+            <Swords className="h-5 w-5 sm:h-6 sm:w-6" aria-hidden="true" />
           </div>
-          <div>
-            <div className="flex items-center gap-2 text-xs font-semibold text-sky-700 dark:text-cyan-400">
-              <span>Kahoot 式多人同步競技平台</span>
-              <span aria-hidden="true">·</span>
-              <span>房主控場 × 公布答案分布 × 星際頒獎台</span>
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-semibold text-sky-700 sm:gap-2 sm:text-xs dark:text-cyan-400">
+              <span>Kahoot 式多人同步競技</span>
+              <span className="hidden sm:inline" aria-hidden="true">·</span>
+              <span className="hidden sm:inline">房主控場 × 公布答案分布 × 星際頒獎台</span>
             </div>
-            <h1 className="mt-0.5 text-xl font-extrabold text-slate-900 md:text-2xl dark:text-white">
+            <h1 className="mt-0.5 truncate text-lg font-extrabold text-slate-900 sm:text-xl md:text-2xl dark:text-white">
               星際競技搶答大廳
             </h1>
           </div>
@@ -861,9 +868,9 @@ export function OnlineBattleView({
         </div>
       ) : !room ? (
         /* Lobby: Create Room (Host) OR Join Room (Player) */
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+        <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-12">
           {/* Left: Host Creates Multi-Player Room */}
-          <section className="space-y-4 rounded-2xl border border-slate-200 bg-white/95 p-6 shadow-sm lg:col-span-7 dark:border-slate-800 dark:bg-[#0D1424] dark:shadow-none">
+          <section className="space-y-4 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm sm:p-6 lg:col-span-7 dark:border-slate-800 dark:bg-[#0D1424] dark:shadow-none">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 text-base font-bold text-slate-900 dark:text-white">
                 <Plus className="h-4 w-4 text-sky-600 dark:text-cyan-400" aria-hidden="true" />
@@ -1047,7 +1054,7 @@ export function OnlineBattleView({
 
           {/* Right: Join Room + Host Recent Rooms */}
           <div className="space-y-6 lg:col-span-5">
-            <section className="space-y-3 rounded-2xl border border-slate-200 bg-white/95 p-6 shadow-sm dark:border-slate-800 dark:bg-[#0D1424] dark:shadow-none">
+            <section className="space-y-3 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm sm:p-6 dark:border-slate-800 dark:bg-[#0D1424] dark:shadow-none">
               <h2 className="text-base font-bold text-slate-900 dark:text-white">
                 參賽學生：輸入 6 碼房號加入
               </h2>
@@ -1055,20 +1062,20 @@ export function OnlineBattleView({
                 支援多人同時上線搶答！請先確認上方暱稱後輸入教師／房主的 6 碼房間代碼。
               </p>
 
-              <div className="flex gap-2">
+              <div className="flex flex-col gap-2 sm:flex-row">
                 <input
                   type="text"
                   maxLength={6}
                   value={joinCodeInput}
                   onChange={(e) => setJoinCodeInput(e.target.value.toUpperCase())}
                   placeholder="例：K9M4X2"
-                  className="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 font-mono text-base font-bold uppercase tracking-widest text-slate-900 focus:border-amber-500 focus:outline-none dark:border-slate-700 dark:bg-[#080D1A] dark:text-white dark:focus:border-amber-400"
+                  className="min-h-[44px] flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 font-mono text-base font-bold uppercase tracking-widest text-slate-900 focus:border-amber-500 focus:outline-none dark:border-slate-700 dark:bg-[#080D1A] dark:text-white dark:focus:border-amber-400"
                 />
                 <button
                   type="button"
                   disabled={actionBusy}
                   onClick={() => handleJoinRoom()}
-                  className="rounded-xl bg-amber-500 px-5 py-2.5 text-sm font-bold text-white hover:bg-amber-600 disabled:opacity-50 dark:bg-amber-400 dark:text-slate-950 dark:hover:bg-amber-300"
+                  className="min-h-[44px] shrink-0 rounded-xl bg-amber-500 px-5 py-2.5 text-sm font-bold text-white hover:bg-amber-600 disabled:opacity-50 dark:bg-amber-400 dark:text-slate-950 dark:hover:bg-amber-300"
                 >
                   加入對戰
                 </button>
@@ -1147,17 +1154,17 @@ export function OnlineBattleView({
         </div>
       ) : room.status === 'waiting' ? (
         /* Waiting Lobby: Host sees live roster & Start button; Players see Lobby status */
-        <div className="mx-auto max-w-3xl space-y-5 rounded-2xl border border-slate-200 bg-white/95 p-8 text-center shadow-sm dark:border-slate-800 dark:bg-[#0D1424] dark:shadow-none">
+        <div className="mx-auto max-w-3xl space-y-5 rounded-2xl border border-slate-200 bg-white/95 p-4 text-center shadow-sm sm:p-8 dark:border-slate-800 dark:bg-[#0D1424] dark:shadow-none">
           <div className="text-xs font-semibold text-sky-700 dark:text-cyan-400">
             {room.scopeLabel} · 共 {room.questionCount} 題 · 每題 {room.questionSeconds} 秒
           </div>
-          <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white">
+          <h2 className="text-xl font-extrabold text-slate-900 sm:text-2xl dark:text-white">
             {isHost ? '星際對戰等候大廳（房主控場）' : '已進入星際競技大廳，等待房主開戰！'}
           </h2>
 
           {/* PIN Box */}
-          <div className="mx-auto flex max-w-sm items-center justify-center gap-3 rounded-2xl border border-cyan-500/40 bg-slate-900 px-6 py-4 dark:bg-[#080D1A]">
-            <span className="font-mono text-4xl font-extrabold tracking-[0.22em] text-cyan-300">
+          <div className="mx-auto flex max-w-sm items-center justify-center gap-2.5 rounded-2xl border border-cyan-500/40 bg-slate-900 px-4 py-3 sm:gap-3 sm:px-6 sm:py-4 dark:bg-[#080D1A]">
+            <span className="font-mono text-3xl font-extrabold tracking-[0.16em] text-cyan-300 sm:text-4xl sm:tracking-[0.22em]">
               {room.roomCode}
             </span>
             <button
@@ -1257,39 +1264,39 @@ export function OnlineBattleView({
           const bonusAwarded = isHost ? 30 : isWinner ? 60 : myRank >= 0 && myRank < 3 ? 45 : 25;
 
           return (
-            <div className="mx-auto max-w-4xl space-y-6 rounded-2xl border border-slate-200 bg-white/95 p-6 text-center shadow-sm md:p-8 dark:border-slate-800 dark:bg-[#0D1424] dark:shadow-none">
-              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl border border-amber-400/60 bg-amber-50 text-amber-500 dark:bg-amber-400/15 dark:text-amber-300">
-                <Crown className="h-9 w-9" aria-hidden="true" />
+            <div className="mx-auto max-w-4xl space-y-5 rounded-2xl border border-slate-200 bg-white/95 p-4 text-center shadow-sm sm:space-y-6 sm:p-6 md:p-8 dark:border-slate-800 dark:bg-[#0D1424] dark:shadow-none">
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-amber-400/60 bg-amber-50 text-amber-500 sm:h-16 sm:w-16 dark:bg-amber-400/15 dark:text-amber-300">
+                <Crown className="h-8 w-8 sm:h-9 sm:w-9" aria-hidden="true" />
               </div>
 
               <div>
                 <div className="text-xs font-bold tracking-wider text-amber-600 uppercase dark:text-amber-300">
                   {room.scopeLabel} · 結算頒獎典禮
                 </div>
-                <h2 className="mt-1 text-2xl font-extrabold text-slate-900 md:text-3xl dark:text-white">
+                <h2 className="mt-1 text-xl font-extrabold text-slate-900 sm:text-2xl md:text-3xl dark:text-white">
                   {top3[0] ? `全場總冠軍：${top3[0].name}` : '搶答對戰結算完成！'}
                 </h2>
-                <p className="mt-1.5 text-sm font-semibold text-emerald-700 dark:text-emerald-300">
+                <p className="mt-1.5 text-xs font-semibold text-emerald-700 sm:text-sm dark:text-emerald-300">
                   已入帳 +{bonusAwarded} 分探索積分至學生檔案「{profile.name}」
                 </p>
               </div>
 
               {/* 3-Step Kahoot Podium */}
               {top3.length > 0 && (
-                <div className="mx-auto grid max-w-2xl grid-cols-3 items-end gap-3 pt-4">
+                <div className="mx-auto grid max-w-2xl grid-cols-3 items-end gap-2 pt-4 sm:gap-3">
                   {/* 2nd Place (Left) */}
-                  <div className="animate-podium-rise flex flex-col items-center" style={{ animationDelay: '0.18s' }}>
+                  <div className="animate-podium-rise flex min-w-0 flex-col items-center" style={{ animationDelay: '0.18s' }}>
                     {top3[1] ? (
                       <>
-                        <div className="mb-2 text-sm font-bold text-slate-800 dark:text-slate-100">
+                        <div className="mb-1.5 w-full truncate text-xs font-bold text-slate-800 sm:mb-2 sm:text-sm dark:text-slate-100">
                           {top3[1].name}
                         </div>
-                        <div className="w-full rounded-t-2xl border border-slate-300 bg-gradient-to-b from-slate-200 to-slate-300 px-3 py-5 text-slate-900 dark:border-slate-600 dark:from-slate-700 dark:to-slate-800 dark:text-white">
-                          <div className="font-mono text-2xl font-black">2nd</div>
-                          <div className="mt-1 font-mono text-base font-bold tabular-nums">
+                        <div className="w-full rounded-t-2xl border border-slate-300 bg-gradient-to-b from-slate-200 to-slate-300 px-1.5 py-4 text-slate-900 sm:px-3 sm:py-5 dark:border-slate-600 dark:from-slate-700 dark:to-slate-800 dark:text-white">
+                          <div className="font-mono text-xl font-black sm:text-2xl">2nd</div>
+                          <div className="mt-1 font-mono text-sm font-bold tabular-nums sm:text-base">
                             {top3[1].score}
                           </div>
-                          <div className="text-[11px] opacity-80">答對 {top3[1].correctCount} 題</div>
+                          <div className="text-[10px] opacity-80 sm:text-[11px]">答對 {top3[1].correctCount} 題</div>
                         </div>
                       </>
                     ) : (
@@ -1298,20 +1305,20 @@ export function OnlineBattleView({
                   </div>
 
                   {/* 1st Place (Center, Tallest) */}
-                  <div className="animate-podium-rise flex flex-col items-center" style={{ animationDelay: '0.45s' }}>
+                  <div className="animate-podium-rise flex min-w-0 flex-col items-center" style={{ animationDelay: '0.45s' }}>
                     {top3[0] && (
                       <>
-                        <Crown className="mb-1 h-7 w-7 text-amber-500" aria-hidden="true" />
-                        <div className="mb-2 text-base font-extrabold text-slate-900 dark:text-amber-300">
+                        <Crown className="mb-1 h-6 w-6 text-amber-500 sm:h-7 sm:w-7" aria-hidden="true" />
+                        <div className="mb-1.5 w-full truncate text-sm font-extrabold text-slate-900 sm:mb-2 sm:text-base dark:text-amber-300">
                           {top3[0].name}
                         </div>
-                        <div className="w-full rounded-t-2xl border border-amber-400 bg-gradient-to-b from-amber-300 to-amber-500 px-3 py-8 text-slate-950 shadow-lg">
-                          <div className="font-mono text-3xl font-black">1st</div>
-                          <div className="mt-1 font-mono text-xl font-extrabold tabular-nums">
+                        <div className="w-full rounded-t-2xl border border-amber-400 bg-gradient-to-b from-amber-300 to-amber-500 px-1.5 py-6 text-slate-950 shadow-lg sm:px-3 sm:py-8">
+                          <div className="font-mono text-2xl font-black sm:text-3xl">1st</div>
+                          <div className="mt-1 font-mono text-lg font-extrabold tabular-nums sm:text-xl">
                             {top3[0].score}
                           </div>
-                          <div className="text-xs font-semibold">
-                            答對 {top3[0].correctCount} / {room.questionCount} 題
+                          <div className="text-[11px] font-semibold sm:text-xs">
+                            對 {top3[0].correctCount}/{room.questionCount} 題
                           </div>
                         </div>
                       </>
@@ -1319,18 +1326,18 @@ export function OnlineBattleView({
                   </div>
 
                   {/* 3rd Place (Right) */}
-                  <div className="animate-podium-rise flex flex-col items-center" style={{ animationDelay: '0.05s' }}>
+                  <div className="animate-podium-rise flex min-w-0 flex-col items-center" style={{ animationDelay: '0.05s' }}>
                     {top3[2] ? (
                       <>
-                        <div className="mb-2 text-sm font-bold text-slate-800 dark:text-slate-100">
+                        <div className="mb-1.5 w-full truncate text-xs font-bold text-slate-800 sm:mb-2 sm:text-sm dark:text-slate-100">
                           {top3[2].name}
                         </div>
-                        <div className="w-full rounded-t-2xl border border-orange-300 bg-gradient-to-b from-orange-200 to-orange-400 px-3 py-4 text-slate-950 dark:border-orange-500/50 dark:from-orange-700/70 dark:to-orange-900/80 dark:text-orange-100">
-                          <div className="font-mono text-xl font-black">3rd</div>
-                          <div className="mt-1 font-mono text-sm font-bold tabular-nums">
+                        <div className="w-full rounded-t-2xl border border-orange-300 bg-gradient-to-b from-orange-200 to-orange-400 px-1.5 py-3.5 text-slate-950 sm:px-3 sm:py-4 dark:border-orange-500/50 dark:from-orange-700/70 dark:to-orange-900/80 dark:text-orange-100">
+                          <div className="font-mono text-lg font-black sm:text-xl">3rd</div>
+                          <div className="mt-1 font-mono text-xs font-bold tabular-nums sm:text-sm">
                             {top3[2].score}
                           </div>
-                          <div className="text-[11px] opacity-80">答對 {top3[2].correctCount} 題</div>
+                          <div className="text-[10px] opacity-80 sm:text-[11px]">答對 {top3[2].correctCount} 題</div>
                         </div>
                       </>
                     ) : (
@@ -1404,8 +1411,8 @@ export function OnlineBattleView({
         /* Live Arena: 'question' OR 'reveal' phase */
         <div className="space-y-5">
           {/* HUD Top Bar */}
-          <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white/95 px-5 py-3.5 shadow-sm dark:border-slate-800 dark:bg-[#0D1424] dark:shadow-none">
-            <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-2.5 rounded-2xl border border-slate-200 bg-white/95 px-3.5 py-2.5 shadow-sm sm:gap-4 sm:px-5 sm:py-3.5 dark:border-slate-800 dark:bg-[#0D1424] dark:shadow-none">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
               <span className="rounded-lg bg-sky-100 px-2.5 py-1 font-mono text-xs font-extrabold text-sky-800 dark:bg-cyan-500/20 dark:text-cyan-300">
                 第 {room.currentIndex + 1} / {room.questionCount} 題
               </span>
@@ -1414,7 +1421,7 @@ export function OnlineBattleView({
               </span>
             </div>
 
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3 sm:gap-4">
               <span className="font-mono text-xs font-bold text-slate-600 tabular-nums dark:text-slate-300">
                 已作答：{isHost ? roomPlayers.filter((p) => p.lastRoundIndex === room.currentIndex).length : room.answeredTotal} /{' '}
                 {isHost ? roomPlayers.length : room.playerTotal} 人
@@ -1422,7 +1429,7 @@ export function OnlineBattleView({
 
               {room.status === 'question' ? (
                 <div
-                  className={`inline-flex items-center gap-1.5 rounded-xl border px-3.5 py-1 font-mono text-lg font-extrabold tabular-nums ${
+                  className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-1 font-mono text-base font-extrabold tabular-nums sm:px-3.5 sm:text-lg ${
                     roundSecondsLeft <= 5
                       ? 'animate-pulse border-rose-400 bg-rose-50 text-rose-700 dark:border-rose-500/60 dark:bg-rose-500/20 dark:text-rose-200'
                       : 'border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-400/50 dark:bg-amber-400/15 dark:text-amber-200'
@@ -1434,22 +1441,22 @@ export function OnlineBattleView({
               ) : (
                 <span className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-400/50 bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-200">
                   <BarChart3 className="h-3.5 w-3.5" aria-hidden="true" />
-                  <span>本題解答與排行公布</span>
+                  <span>解答公布</span>
                 </span>
               )}
             </div>
           </div>
 
           {currentQuestion && (
-            <div className="space-y-5 rounded-2xl border border-slate-200 bg-white/95 p-6 shadow-sm dark:border-slate-800 dark:bg-[#0D1424] dark:shadow-none">
+            <div className="space-y-4 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm sm:space-y-5 sm:p-6 dark:border-slate-800 dark:bg-[#0D1424] dark:shadow-none">
               {/* Question + Diagram/Image */}
-              <div className="grid grid-cols-1 items-center gap-5 rounded-xl border border-slate-200 bg-slate-50 p-5 lg:grid-cols-12 dark:border-slate-800 dark:bg-[#080D1A]">
+              <div className="grid grid-cols-1 items-center gap-4 rounded-xl border border-slate-200 bg-slate-50 p-3.5 sm:gap-5 sm:p-5 lg:grid-cols-12 dark:border-slate-800 dark:bg-[#080D1A]">
                 <div
                   className={`${
                     currentQuestion.diagramId || currentQuestion.imageUrl
                       ? 'lg:col-span-7'
                       : 'lg:col-span-12'
-                  } text-lg leading-relaxed font-bold text-slate-900 md:text-xl dark:text-white`}
+                  } text-base leading-relaxed font-bold text-slate-900 sm:text-lg md:text-xl dark:text-white`}
                 >
                   {currentQuestion.q}
                 </div>
@@ -1518,7 +1525,7 @@ export function OnlineBattleView({
                       </div>
                     )}
 
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
                       {currentQuestion.options.map((opt, idx) => {
                         const shape = KAHOOT_SHAPES[idx];
                         const isPicked =
@@ -1532,17 +1539,20 @@ export function OnlineBattleView({
                             data-sfx="custom"
                             disabled={hasAnsweredThisRound || submittingAnswer}
                             onClick={() => submitPlayerAnswer(idx)}
-                            className={`flex items-center gap-3.5 rounded-2xl border-2 px-5 py-4 text-left text-base font-bold shadow-sm ${
+                            className={`flex min-h-[76px] flex-col items-start justify-center gap-1.5 rounded-2xl border-2 px-3 py-3 text-left text-sm font-bold shadow-sm sm:min-h-[68px] sm:flex-row sm:items-center sm:gap-3.5 sm:px-5 sm:py-4 sm:text-base ${
                               shape.bg
                             } ${dimmed ? 'opacity-35 grayscale-[40%]' : ''} ${
                               isPicked ? 'ring-4 ring-white dark:ring-cyan-300' : ''
                             }`}
                           >
-                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-black/25 text-lg">
-                              {shape.symbol}
-                            </span>
-                            <span className="flex-1">{opt}</span>
-                            {isPicked && <Check className="h-5 w-5 shrink-0" aria-hidden="true" />}
+                            <div className="flex w-full items-center justify-between sm:w-auto">
+                              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-black/25 text-base sm:h-9 sm:w-9 sm:text-lg">
+                                {shape.symbol}
+                              </span>
+                              {isPicked && <Check className="h-5 w-5 shrink-0 sm:hidden" aria-hidden="true" />}
+                            </div>
+                            <span className="w-full flex-1 break-words leading-snug">{opt}</span>
+                            {isPicked && <Check className="hidden h-5 w-5 shrink-0 sm:block" aria-hidden="true" />}
                           </button>
                         );
                       })}
@@ -1620,7 +1630,7 @@ export function OnlineBattleView({
                         <Award className="h-4 w-4 text-amber-500" aria-hidden="true" />
                         <span>即時前 5 名積分榜</span>
                       </div>
-                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-5">
+                      <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
                         {room.leaderboard.slice(0, 5).map((entry, idx) => (
                           <div
                             key={entry.uid}

@@ -50,6 +50,7 @@ import { ThemeContext } from './components/ThemeContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { StarfieldCanvas } from './components/StarfieldCanvas';
 import { TopBar } from './components/TopBar';
+import { MobileBottomNav } from './components/MobileBottomNav';
 import { PlanetHomeView } from './components/PlanetHomeView';
 import { SpaceSectorMap } from './components/SpaceSectorMap';
 import { OnlineBattleView } from './components/OnlineBattleView';
@@ -255,6 +256,7 @@ export default function App() {
     loadCustomQuestionsLocal()
   );
   const [homeView, setHomeView] = useState<HomeViewMode>('planet');
+  const [inBattleRoom, setInBattleRoom] = useState(false);
   const [activeSectorId, setActiveSectorId] = useState<SectorId | null>(null);
   const [activeTab, setActiveTab] = useState<TerminalTab>('slides');
   const [activeSubId, setActiveSubId] = useState<string>('s1-1');
@@ -526,6 +528,7 @@ export default function App() {
       sectorDef?.subLessons.find((sub) => !sp.subLevels?.[sub.id]?.completed) ??
       sectorDef?.subLessons[0];
     setActiveSectorId(id);
+    setInBattleRoom(false);
     setActiveTab('slides');
     setActiveSubId(firstIncompleteSub?.id ?? `${id}-1`);
     setLastQuizOutcome(null);
@@ -951,10 +954,13 @@ export default function App() {
       ? 'space-grid-bg bg-[#030714] text-slate-100'
       : 'light-sky-bg text-slate-900';
 
+  const showMobileBottomNav =
+    activeSector === null && !(homeView === 'battle' && inBattleRoom);
+
   return (
     <ErrorBoundary>
       <ThemeContext.Provider value={store.theme}>
-        <div className={`relative min-h-screen overflow-x-hidden transition-colors ${outerThemeClass}`}>
+        <div className={`relative min-h-dvh overflow-x-hidden transition-colors ${outerThemeClass}`}>
           {isDarkTheme(store.theme) ? (
             <>
               {/* Cosmic Nebula Volumetric Backdrop */}
@@ -1041,7 +1047,7 @@ export default function App() {
             </div>
           )}
 
-          <div className="relative z-10 flex min-h-screen flex-col">
+          <div className="relative z-10 flex min-h-dvh flex-col">
             <TopBar
               activeSectorId={activeSectorId}
               homeView={homeView}
@@ -1049,11 +1055,13 @@ export default function App() {
               wrongCount={wrongCount}
               onGoHomePlanet={() => {
                 setActiveSectorId(null);
+                setInBattleRoom(false);
                 setHomeView('planet');
                 setLastQuizOutcome(null);
               }}
               onGoHomeGrid={() => {
                 setActiveSectorId(null);
+                setInBattleRoom(false);
                 setHomeView('grid');
                 setLastQuizOutcome(null);
               }}
@@ -1119,7 +1127,11 @@ export default function App() {
                   sectorsSource={mergedSectors}
                   onCycleTheme={handleToggleTheme}
                   onClaimBattleBonus={handleClaimBattleBonus}
-                  onBackToHome={() => setHomeView('planet')}
+                  onBackToHome={() => {
+                    setInBattleRoom(false);
+                    setHomeView('planet');
+                  }}
+                  onRoomActiveChange={setInBattleRoom}
                 />
               ) : (
                 <SpaceSectorMap
@@ -1135,11 +1147,40 @@ export default function App() {
             </main>
           </div>
 
+          {showMobileBottomNav && (
+            <MobileBottomNav
+              activeSectorId={activeSectorId}
+              homeView={homeView}
+              wrongCount={wrongCount}
+              isPlanetHome={activeSector === null && homeView === 'planet'}
+              onGoHomePlanet={() => {
+                setActiveSectorId(null);
+                setInBattleRoom(false);
+                setHomeView('planet');
+                setLastQuizOutcome(null);
+              }}
+              onGoHomeGrid={() => {
+                setActiveSectorId(null);
+                setInBattleRoom(false);
+                setHomeView('grid');
+                setLastQuizOutcome(null);
+              }}
+              onGoBattle={() => {
+                setActiveSectorId(null);
+                setHomeView('battle');
+                setLastQuizOutcome(null);
+              }}
+              onOpenProgress={() => setShowProgressModal(true)}
+              onOpenWrongReview={() => setShowWrongModal(true)}
+            />
+          )}
+
           {/* Blue老師課堂巡遊小精靈 */}
           <SpaceFairyGuide
             theme={store.theme}
             mode={store.mode}
             isPlanetHome={activeSector === null && homeView === 'planet'}
+            hasMobileBottomNav={showMobileBottomNav}
             activeSector={activeSector}
             activeTab={activeTab}
             activeSubLesson={activeSubLesson}

@@ -146,7 +146,14 @@ export function SymmetryOrigamiLab({ isCompleted, onComplete }: SymmetryOrigamiL
       const cell = 34;
       const size = cell * 8;
       return (
-        <svg width={size + 16} height={size + 16} viewBox={`-8 -8 ${size + 16} ${size + 16}`} role="img" aria-label="展開的黃黑灰對稱色紙">
+        <svg
+          width={size + 16}
+          height={size + 16}
+          viewBox={`-8 -8 ${size + 16} ${size + 16}`}
+          role="img"
+          aria-label="展開的黃黑灰對稱色紙"
+          className="h-auto w-full max-w-[290px] sm:max-w-none"
+        >
           {Array.from({ length: 8 }, (_, r) =>
             Array.from({ length: 8 }, (_, c) => {
               const x = c * cell;
@@ -185,7 +192,14 @@ export function SymmetryOrigamiLab({ isCompleted, onComplete }: SymmetryOrigamiL
       // Step 1: Left half folded to show diamond pocket + yellow right 4x4 + grey bottom-right
       const cell = 34;
       return (
-        <svg width={288} height={288} viewBox="-8 -8 288 288" role="img" aria-label="摺紙步驟1">
+        <svg
+          width={288}
+          height={288}
+          viewBox="-8 -8 288 288"
+          role="img"
+          aria-label="摺紙步驟1"
+          className="h-auto w-full max-w-[290px] sm:max-w-none"
+        >
           {/* Top-right 4x4 yellow */}
           {Array.from({ length: 4 }, (_, r) =>
             Array.from({ length: 4 }, (_, c) => (
@@ -262,7 +276,14 @@ export function SymmetryOrigamiLab({ isCompleted, onComplete }: SymmetryOrigamiL
     if (foldStep === 2) {
       const cell = 34;
       return (
-        <svg width={288} height={260} viewBox="-8 -8 288 260" role="img" aria-label="摺紙步驟2">
+        <svg
+          width={288}
+          height={260}
+          viewBox="-8 -8 288 260"
+          role="img"
+          aria-label="摺紙步驟2"
+          className="h-auto w-full max-w-[290px] sm:max-w-none"
+        >
           {/* Top row folded behind, showing 4x4 black on left + yellow on right */}
           {Array.from({ length: 3 }, (_, r) =>
             Array.from({ length: 4 }, (_, c) => (
@@ -319,7 +340,14 @@ export function SymmetryOrigamiLab({ isCompleted, onComplete }: SymmetryOrigamiL
     const cell = 52;
     const size = cell * 4;
     return (
-      <svg width={size + 24} height={size + 24} viewBox={`-12 -12 ${size + 24} ${size + 24}`} role="img" aria-label={isBackSide ? '完成品背面4x4黃色' : '完成品正面4x4黑色'}>
+      <svg
+        width={size + 24}
+        height={size + 24}
+        viewBox={`-12 -12 ${size + 24} ${size + 24}`}
+        role="img"
+        aria-label={isBackSide ? '完成品背面4x4黃色' : '完成品正面4x4黑色'}
+        className="h-auto w-full max-w-[230px] sm:max-w-none"
+      >
         {Array.from({ length: 4 }, (_, r) =>
           Array.from({ length: 4 }, (_, c) => (
             <rect
@@ -345,16 +373,16 @@ export function SymmetryOrigamiLab({ isCompleted, onComplete }: SymmetryOrigamiL
   };
 
   return (
-    <div className="space-y-6 rounded-2xl border border-slate-200 bg-white/95 p-6 shadow-sm dark:border-slate-800 dark:bg-[#0D1424] dark:shadow-none">
-      <div className="flex flex-col justify-between gap-4 border-b border-slate-200 pb-5 lg:flex-row lg:items-end dark:border-slate-800">
+    <div className="space-y-5 rounded-2xl border border-slate-200 bg-white/95 p-3.5 shadow-sm sm:space-y-6 sm:p-6 dark:border-slate-800 dark:bg-[#0D1424] dark:shadow-none">
+      <div className="flex flex-col justify-between gap-4 border-b border-slate-200 pb-4 sm:pb-5 lg:flex-row lg:items-end dark:border-slate-800">
         <div>
           <p className="text-xs font-semibold text-sky-700 dark:text-cyan-400">
             創意課程 · 主題 3 面積綜合與線對稱
           </p>
-          <h3 className="mt-1 text-xl font-bold text-slate-900 dark:text-white">
+          <h3 className="mt-1 text-lg font-bold text-slate-900 sm:text-xl dark:text-white">
             摺摺稱奇－線對稱（黃／黑／灰 16×16 摺紙）
           </h3>
-          <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+          <p className="mt-1 text-xs leading-relaxed text-slate-600 sm:text-sm dark:text-slate-300">
             透過線對稱摺線把黃、黑、灰三色色紙摺成「正面 4×4 全黑、背面 4×4 全黃」，並完全隱藏所有灰色格子！
           </p>
         </div>
@@ -363,7 +391,7 @@ export function SymmetryOrigamiLab({ isCompleted, onComplete }: SymmetryOrigamiL
           <button
             type="button"
             onClick={() => setTab('origami')}
-            className={`inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-semibold ${
+            className={`inline-flex min-h-[40px] items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-semibold ${
               tab === 'origami'
                 ? 'bg-sky-600 text-white dark:bg-cyan-500 dark:text-slate-950'
                 : 'border border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300'
@@ -375,7 +403,7 @@ export function SymmetryOrigamiLab({ isCompleted, onComplete }: SymmetryOrigamiL
           <button
             type="button"
             onClick={() => setTab('symmetry')}
-            className={`inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-semibold ${
+            className={`inline-flex min-h-[40px] items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-semibold ${
               tab === 'symmetry'
                 ? 'bg-amber-500 text-white dark:bg-amber-400 dark:text-slate-950'
                 : 'border border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300'
@@ -388,14 +416,14 @@ export function SymmetryOrigamiLab({ isCompleted, onComplete }: SymmetryOrigamiL
       </div>
 
       {tab === 'origami' ? (
-        <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-12">
-          <div className="flex flex-col items-center justify-center rounded-xl border border-slate-200 bg-slate-900 p-6 lg:col-span-6 dark:border-slate-800 dark:bg-[#080D1A]">
+        <div className="grid grid-cols-1 items-start gap-6 sm:gap-8 lg:grid-cols-12">
+          <div className="flex flex-col items-center justify-center rounded-xl border border-slate-200 bg-slate-900 p-4 sm:p-6 lg:col-span-6 dark:border-slate-800 dark:bg-[#080D1A]">
             {renderOrigamiSvg()}
             {foldStep === 3 && (
               <button
                 type="button"
                 onClick={() => setIsBackSide((v) => !v)}
-                className="mt-4 inline-flex items-center gap-2 rounded-xl border border-amber-400/60 bg-amber-400/20 px-4 py-2 text-sm font-semibold text-amber-200 hover:bg-amber-400/30"
+                className="mt-4 inline-flex min-h-[44px] items-center gap-2 rounded-xl border border-amber-400/60 bg-amber-400/20 px-4 py-2 text-sm font-semibold text-amber-200 hover:bg-amber-400/30"
               >
                 <FlipHorizontal className="h-4 w-4" aria-hidden="true" />
                 <span>{isBackSide ? '翻回正面（4×4 全黑）' : '翻轉色紙看背面（4×4 全黃）'}</span>
@@ -462,20 +490,20 @@ export function SymmetryOrigamiLab({ isCompleted, onComplete }: SymmetryOrigamiL
             </span>
           </div>
 
-          <div className="flex flex-col items-center rounded-xl border border-slate-200 bg-slate-50 p-6 dark:border-slate-800 dark:bg-[#080D1A]">
-            <div className="mb-4 text-sm font-medium text-slate-700 dark:text-slate-200">
+          <div className="flex flex-col items-center rounded-xl border border-slate-200 bg-slate-50 p-3.5 sm:p-6 dark:border-slate-800 dark:bg-[#080D1A]">
+            <div className="mb-4 text-center text-xs font-medium text-slate-700 sm:text-sm dark:text-slate-200">
               藍色虛線為「對稱軸」，請點擊空白方格畫出正確的線對稱圖案：
             </div>
 
             {currentCh.axis === 'vertical' ? (
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2.5 sm:gap-3">
                 {/* Fixed Left Half */}
-                <div className="grid grid-cols-2 gap-1.5">
+                <div className="grid grid-cols-2 gap-1 sm:gap-1.5">
                   {currentCh.leftPattern.map((row, r) =>
                     row.map((val, c) => (
                       <div
                         key={`l-${r}-${c}`}
-                        className={`h-12 w-12 rounded-md border ${
+                        className={`h-10 w-10 rounded-md border sm:h-12 sm:w-12 ${
                           val
                             ? currentCh.color === 'yellow'
                               ? 'border-amber-400 bg-amber-400'
@@ -489,12 +517,12 @@ export function SymmetryOrigamiLab({ isCompleted, onComplete }: SymmetryOrigamiL
 
                 {/* Vertical Symmetry Axis */}
                 <div
-                  className="h-56 w-0.5 border-l-2 border-dashed border-sky-500 dark:border-cyan-400"
+                  className="h-44 w-0.5 border-l-2 border-dashed border-sky-500 sm:h-56 dark:border-cyan-400"
                   aria-label="垂直對稱軸"
                 />
 
                 {/* Interactive Right Half */}
-                <div className="grid grid-cols-2 gap-1.5">
+                <div className="grid grid-cols-2 gap-1 sm:gap-1.5">
                   {userHalf.map((row, r) =>
                     row.map((val, c) => (
                       <button
@@ -502,7 +530,7 @@ export function SymmetryOrigamiLab({ isCompleted, onComplete }: SymmetryOrigamiL
                         type="button"
                         onClick={() => toggleUserCell(r, c)}
                         aria-label={`第 ${r + 1} 列第 ${c + 1} 格`}
-                        className={`h-12 w-12 rounded-md border transition-colors ${
+                        className={`h-10 w-10 rounded-md border transition-colors sm:h-12 sm:w-12 ${
                           val
                             ? currentCh.color === 'yellow'
                               ? 'border-amber-400 bg-amber-400'
@@ -515,14 +543,14 @@ export function SymmetryOrigamiLab({ isCompleted, onComplete }: SymmetryOrigamiL
                 </div>
               </div>
             ) : (
-              <div className="flex flex-col items-center gap-3">
+              <div className="flex flex-col items-center gap-2.5 sm:gap-3">
                 {/* Fixed Top Half */}
-                <div className="grid grid-cols-4 gap-1.5">
+                <div className="grid grid-cols-4 gap-1 sm:gap-1.5">
                   {currentCh.leftPattern.map((row, r) =>
                     row.map((val, c) => (
                       <div
                         key={`t-${r}-${c}`}
-                        className={`h-12 w-12 rounded-md border ${
+                        className={`h-10 w-10 rounded-md border sm:h-12 sm:w-12 ${
                           val
                             ? 'border-amber-400 bg-amber-400'
                             : 'border-slate-300 bg-slate-200/70 dark:border-slate-700 dark:bg-slate-900'
@@ -534,12 +562,12 @@ export function SymmetryOrigamiLab({ isCompleted, onComplete }: SymmetryOrigamiL
 
                 {/* Horizontal Symmetry Axis */}
                 <div
-                  className="h-0.5 w-56 border-t-2 border-dashed border-sky-500 dark:border-cyan-400"
+                  className="h-0.5 w-44 border-t-2 border-dashed border-sky-500 sm:w-56 dark:border-cyan-400"
                   aria-label="水平對稱軸"
                 />
 
                 {/* Interactive Bottom Half */}
-                <div className="grid grid-cols-4 gap-1.5">
+                <div className="grid grid-cols-4 gap-1 sm:gap-1.5">
                   {userHalf.map((row, r) =>
                     row.map((val, c) => (
                       <button
@@ -547,7 +575,7 @@ export function SymmetryOrigamiLab({ isCompleted, onComplete }: SymmetryOrigamiL
                         type="button"
                         onClick={() => toggleUserCell(r, c)}
                         aria-label={`下方第 ${r + 1} 列第 ${c + 1} 格`}
-                        className={`h-12 w-12 rounded-md border transition-colors ${
+                        className={`h-10 w-10 rounded-md border transition-colors sm:h-12 sm:w-12 ${
                           val
                             ? 'border-amber-400 bg-amber-400'
                             : 'border-slate-300 bg-white hover:border-sky-400 dark:border-slate-700 dark:bg-slate-950 dark:hover:border-slate-500'
@@ -559,11 +587,11 @@ export function SymmetryOrigamiLab({ isCompleted, onComplete }: SymmetryOrigamiL
               </div>
             )}
 
-            <div className="mt-5 flex flex-wrap items-center gap-3">
+            <div className="mt-5 flex flex-wrap justify-center items-center gap-3">
               <button
                 type="button"
                 onClick={() => selectChallenge(chIdx)}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-medium text-slate-700 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
+                className="inline-flex min-h-[44px] items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-medium text-slate-700 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
               >
                 <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
                 <span>清空重畫</span>
@@ -571,7 +599,7 @@ export function SymmetryOrigamiLab({ isCompleted, onComplete }: SymmetryOrigamiL
               <button
                 type="button"
                 onClick={checkSymmetry}
-                className="rounded-xl bg-sky-600 px-5 py-2 text-sm font-bold text-white hover:bg-sky-700 dark:bg-cyan-500 dark:text-slate-950 dark:hover:bg-cyan-400"
+                className="min-h-[44px] rounded-xl bg-sky-600 px-5 py-2 text-sm font-bold text-white hover:bg-sky-700 dark:bg-cyan-500 dark:text-slate-950 dark:hover:bg-cyan-400"
               >
                 驗證線對稱結果
               </button>

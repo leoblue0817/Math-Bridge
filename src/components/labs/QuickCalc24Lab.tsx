@@ -295,16 +295,16 @@ export function QuickCalc24Lab({ isCompleted, onComplete }: QuickCalc24LabProps)
   };
 
   return (
-    <div className="space-y-6 rounded-2xl border border-slate-200 bg-white/95 p-6 shadow-sm dark:border-slate-800 dark:bg-[#0D1424] dark:shadow-none">
-      <div className="flex flex-col justify-between gap-4 border-b border-slate-200 pb-5 lg:flex-row lg:items-end dark:border-slate-800">
+    <div className="space-y-5 rounded-2xl border border-slate-200 bg-white/95 p-3.5 shadow-sm sm:space-y-6 sm:p-6 dark:border-slate-800 dark:bg-[#0D1424] dark:shadow-none">
+      <div className="flex flex-col justify-between gap-4 border-b border-slate-200 pb-4 sm:pb-5 lg:flex-row lg:items-end dark:border-slate-800">
         <div>
           <p className="text-xs font-semibold text-sky-700 dark:text-cyan-400">
             創意課程 · 主題 7 四則混合與指數
           </p>
-          <h3 className="mt-1 text-xl font-bold text-slate-900 dark:text-white">
+          <h3 className="mt-1 text-lg font-bold text-slate-900 sm:text-xl dark:text-white">
             指數與四則速算對決
           </h3>
-          <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+          <p className="mt-1 text-xs leading-relaxed text-slate-600 sm:text-sm dark:text-slate-300">
             支援單人「指數 24 點湊數挑戰」與教室雙人「搶答 PK 賽」（藍方 Q 鍵 / 橘方 P 鍵）！
           </p>
         </div>
@@ -313,7 +313,7 @@ export function QuickCalc24Lab({ isCompleted, onComplete }: QuickCalc24LabProps)
           <button
             type="button"
             onClick={() => setLabMode('puzzle')}
-            className={`inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-semibold ${
+            className={`inline-flex min-h-[40px] items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-semibold ${
               labMode === 'puzzle'
                 ? 'bg-sky-600 text-white dark:bg-cyan-500 dark:text-slate-950'
                 : 'border border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300'
@@ -325,7 +325,7 @@ export function QuickCalc24Lab({ isCompleted, onComplete }: QuickCalc24LabProps)
           <button
             type="button"
             onClick={() => setLabMode('pk')}
-            className={`inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-semibold ${
+            className={`inline-flex min-h-[40px] items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-semibold ${
               labMode === 'pk'
                 ? 'bg-amber-500 text-white dark:bg-amber-400 dark:text-slate-950'
                 : 'border border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300'
@@ -345,7 +345,7 @@ export function QuickCalc24Lab({ isCompleted, onComplete }: QuickCalc24LabProps)
                 key={p.id}
                 type="button"
                 onClick={() => selectPuzzle(idx)}
-                className={`rounded-lg px-3.5 py-2 text-xs font-semibold ${
+                className={`min-h-[40px] rounded-lg px-3.5 py-2 text-xs font-semibold ${
                   puzIdx === idx
                     ? 'bg-sky-600 text-white dark:bg-cyan-500 dark:text-slate-950'
                     : solvedMap[p.id]
@@ -359,15 +359,15 @@ export function QuickCalc24Lab({ isCompleted, onComplete }: QuickCalc24LabProps)
             ))}
           </div>
 
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-6 dark:border-slate-800 dark:bg-[#080D1A]">
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5 sm:p-6 dark:border-slate-800 dark:bg-[#080D1A]">
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div className="text-sm font-medium text-slate-600 dark:text-slate-300">目標計算結果：</div>
-              <div className="font-mono text-4xl font-bold text-amber-600 tabular-nums dark:text-amber-300">
+              <div className="font-mono text-3xl font-bold text-amber-600 tabular-nums sm:text-4xl dark:text-amber-300">
                 {puzzle.target}
               </div>
             </div>
 
-            <div className="mt-5 grid grid-cols-4 gap-3">
+            <div className="mt-4 grid grid-cols-2 gap-2.5 sm:mt-5 sm:grid-cols-4 sm:gap-3">
               {puzzle.cards.map((card, idx) => {
                 const used = Boolean(usedCards[idx]);
                 return (
@@ -376,7 +376,7 @@ export function QuickCalc24Lab({ isCompleted, onComplete }: QuickCalc24LabProps)
                     type="button"
                     disabled={used}
                     onClick={() => addCardToken(idx)}
-                    className={`rounded-xl border py-4 text-center transition-colors ${
+                    className={`min-h-[76px] rounded-xl border py-3.5 text-center transition-colors sm:py-4 ${
                       used
                         ? 'border-slate-200 bg-slate-100 text-slate-400 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-600'
                         : 'border-sky-300 bg-white text-slate-900 hover:bg-sky-50 dark:border-cyan-500/50 dark:bg-cyan-500/10 dark:text-white dark:hover:bg-cyan-500/20'
@@ -399,7 +399,7 @@ export function QuickCalc24Lab({ isCompleted, onComplete }: QuickCalc24LabProps)
                   key={op}
                   type="button"
                   onClick={() => addOpToken(op)}
-                  className="min-w-12 rounded-lg border border-slate-200 bg-white px-4 py-2 font-mono text-lg font-bold text-slate-800 hover:border-amber-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                  className="min-h-[44px] min-w-[44px] rounded-lg border border-slate-200 bg-white px-3.5 py-2 font-mono text-lg font-bold text-slate-800 hover:border-amber-400 sm:min-w-12 sm:px-4 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
                 >
                   {op}
                 </button>
@@ -407,7 +407,7 @@ export function QuickCalc24Lab({ isCompleted, onComplete }: QuickCalc24LabProps)
               <button
                 type="button"
                 onClick={popToken}
-                className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:border-rose-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
+                className="inline-flex min-h-[44px] items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:border-rose-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
               >
                 <Delete className="h-4 w-4" aria-hidden="true" />
                 <span>退格</span>
@@ -415,21 +415,21 @@ export function QuickCalc24Lab({ isCompleted, onComplete }: QuickCalc24LabProps)
               <button
                 type="button"
                 onClick={clearTokens}
-                className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
+                className="inline-flex min-h-[44px] items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
               >
                 <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
                 <span>清空</span>
               </button>
             </div>
 
-            <div className="mt-5 flex flex-col justify-between gap-3 rounded-xl border border-slate-200 bg-white p-4 sm:flex-row sm:items-center dark:border-slate-800 dark:bg-slate-950">
-              <div className="min-h-8 font-mono text-2xl font-bold text-sky-800 tabular-nums dark:text-cyan-200">
+            <div className="mt-5 flex flex-col justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3.5 sm:flex-row sm:items-center sm:p-4 dark:border-slate-800 dark:bg-slate-950">
+              <div className="min-h-8 break-words font-mono text-lg font-bold text-sky-800 tabular-nums sm:text-2xl dark:text-cyan-200">
                 {tokens.length > 0 ? tokens.map((t) => t.text).join(' ') : '（點擊上方牌與符號組合算式）'}
               </div>
               <button
                 type="button"
                 onClick={evaluatePuzzle}
-                className="shrink-0 rounded-xl bg-sky-600 px-6 py-2.5 text-sm font-bold text-white hover:bg-sky-700 dark:bg-cyan-500 dark:text-slate-950 dark:hover:bg-cyan-400"
+                className="min-h-[44px] shrink-0 rounded-xl bg-sky-600 px-6 py-2.5 text-sm font-bold text-white hover:bg-sky-700 dark:bg-cyan-500 dark:text-slate-950 dark:hover:bg-cyan-400"
               >
                 送出驗算
               </button>
@@ -448,21 +448,21 @@ export function QuickCalc24Lab({ isCompleted, onComplete }: QuickCalc24LabProps)
         </div>
       ) : (
         <div className="space-y-5">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4">
             <button
               type="button"
               disabled={buzzerWinner !== null}
               onClick={() => setBuzzerWinner(1)}
-              className={`rounded-xl border p-4 text-center transition-colors ${
+              className={`min-h-[88px] rounded-xl border p-3.5 text-center transition-colors sm:p-4 ${
                 buzzerWinner === 1
                   ? 'border-sky-500 bg-sky-50 dark:border-cyan-400 dark:bg-cyan-500/20'
                   : 'border-slate-200 bg-slate-50 hover:border-sky-400 dark:border-slate-800 dark:bg-[#080D1A] dark:hover:border-cyan-500/50'
               }`}
             >
               <div className="text-xs font-semibold text-sky-700 dark:text-cyan-300">
-                藍方（按 Q 鍵或點此搶答）
+                藍方（點擊搶答 / Q 鍵）
               </div>
-              <div className="mt-1 font-mono text-3xl font-bold text-slate-900 tabular-nums dark:text-white">
+              <div className="mt-1 font-mono text-2xl font-bold text-slate-900 tabular-nums sm:text-3xl dark:text-white">
                 {pkScores[0]} 分
               </div>
             </button>
@@ -470,29 +470,29 @@ export function QuickCalc24Lab({ isCompleted, onComplete }: QuickCalc24LabProps)
               type="button"
               disabled={buzzerWinner !== null}
               onClick={() => setBuzzerWinner(2)}
-              className={`rounded-xl border p-4 text-center transition-colors ${
+              className={`min-h-[88px] rounded-xl border p-3.5 text-center transition-colors sm:p-4 ${
                 buzzerWinner === 2
                   ? 'border-amber-500 bg-amber-50 dark:border-amber-400 dark:bg-amber-500/20'
                   : 'border-slate-200 bg-slate-50 hover:border-amber-400 dark:border-slate-800 dark:bg-[#080D1A] dark:hover:border-amber-500/50'
               }`}
             >
               <div className="text-xs font-semibold text-amber-700 dark:text-amber-300">
-                橘方（按 P 鍵或點此搶答）
+                橘方（點擊搶答 / P 鍵）
               </div>
-              <div className="mt-1 font-mono text-3xl font-bold text-slate-900 tabular-nums dark:text-white">
+              <div className="mt-1 font-mono text-2xl font-bold text-slate-900 tabular-nums sm:text-3xl dark:text-white">
                 {pkScores[1]} 分
               </div>
             </button>
           </div>
 
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-6 dark:border-slate-800 dark:bg-[#080D1A]">
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 sm:p-6 dark:border-slate-800 dark:bg-[#080D1A]">
             <div className="text-xs font-medium text-slate-500 dark:text-slate-400">
               搶答回合 {pkRound + 1} / {BUZZER_ROUNDS.length}
               {buzzerWinner
                 ? ` · 目前由「${buzzerWinner === 1 ? '藍方' : '橘方'}」取得答題權！`
                 : ' · 請按下 Q / P 或點擊上方隊伍搶答'}
             </div>
-            <div className="mt-3 font-mono text-3xl font-bold text-slate-900 tabular-nums dark:text-white">
+            <div className="mt-3 font-mono text-2xl font-bold text-slate-900 tabular-nums sm:text-3xl dark:text-white">
               {currentPk.prompt}
             </div>
 
@@ -503,7 +503,7 @@ export function QuickCalc24Lab({ isCompleted, onComplete }: QuickCalc24LabProps)
                   type="button"
                   disabled={!buzzerWinner || pkResult !== null}
                   onClick={() => handlePkOption(idx)}
-                  className="rounded-xl border border-slate-200 bg-white py-3 font-mono text-lg font-bold text-slate-900 hover:border-sky-400 disabled:cursor-not-allowed disabled:opacity-50 tabular-nums dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:hover:border-cyan-400"
+                  className="min-h-[48px] rounded-xl border border-slate-200 bg-white py-3 font-mono text-lg font-bold text-slate-900 hover:border-sky-400 disabled:cursor-not-allowed disabled:opacity-50 tabular-nums dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:hover:border-cyan-400"
                 >
                   {opt}
                 </button>
@@ -516,7 +516,7 @@ export function QuickCalc24Lab({ isCompleted, onComplete }: QuickCalc24LabProps)
                 <button
                   type="button"
                   onClick={nextPkRound}
-                  className="rounded-xl bg-sky-600 px-4 py-2 text-sm font-bold text-white hover:bg-sky-700 dark:bg-cyan-500 dark:text-slate-950 dark:hover:bg-cyan-400"
+                  className="min-h-[44px] rounded-xl bg-sky-600 px-4 py-2 text-sm font-bold text-white hover:bg-sky-700 dark:bg-cyan-500 dark:text-slate-950 dark:hover:bg-cyan-400"
                 >
                   {pkRound + 1 < BUZZER_ROUNDS.length ? '下一搶答題 →' : '重新開局'}
                 </button>

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Award, CheckCircle2, ChevronRight, Lock, X } from 'lucide-react';
+import { Award, CheckCircle2, ChevronDown, ChevronRight, ChevronUp, Lock, X } from 'lucide-react';
 import {
   SPACE_ACHIEVEMENT_BADGES,
   SpaceAchievementBadge,
@@ -22,6 +22,7 @@ export function AchievementWallBar({
   noBlur = false,
 }: AchievementWallBarProps) {
   const [selectedBadge, setSelectedBadge] = useState<SpaceAchievementBadge | null>(null);
+  const [mobileExpanded, setMobileExpanded] = useState(false);
   const isDark = isDarkTheme(theme);
 
   const achievementBadges = profile.achievementBadges ?? [];
@@ -48,40 +49,58 @@ export function AchievementWallBar({
       {variant === 'corner' ? (
         <section
           aria-label="艦長檔案與成就獎章牆"
-          className={`${noBlur ? 'webgl-hud-surface' : 'glass-hud-corner'} rounded-3xl p-3.5`}
+          className={`${noBlur ? 'webgl-hud-surface' : 'glass-hud-corner'} rounded-2xl p-2.5 sm:rounded-3xl sm:p-3.5`}
         >
           <div className="flex items-center justify-between gap-2">
-            <div className="flex min-w-0 items-center gap-2.5">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-amber-300 via-amber-500 to-orange-600 text-slate-950 shadow-[0_4px_12px_rgba(245,158,11,0.45)]">
-                <Award className="h-4 w-4 shrink-0" aria-hidden="true" />
+            <div className="flex min-w-0 items-center gap-2 sm:gap-2.5">
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-amber-300 via-amber-500 to-orange-600 text-slate-950 shadow-[0_4px_12px_rgba(245,158,11,0.45)] sm:h-8 sm:w-8 sm:rounded-xl">
+                <Award className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" aria-hidden="true" />
               </div>
               <div className="min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <h2 className="truncate text-sm font-extrabold tracking-tight text-slate-900 dark:text-white">
+                <div className="flex items-center gap-1">
+                  <h2 className="truncate text-xs font-extrabold tracking-tight text-slate-900 sm:text-sm dark:text-white">
                     {profile.name}
                   </h2>
-                  <span className="shrink-0 text-[11px] font-bold text-sky-700 dark:text-cyan-300">
+                  <span className="hidden shrink-0 text-[11px] font-bold text-sky-700 sm:inline dark:text-cyan-300">
                     · {summary.currentRankLabel}
                   </span>
                 </div>
-                <div className="font-mono text-[11px] font-semibold text-slate-600 tabular-nums dark:text-slate-300">
-                  成就勳章 {summary.unlockedCount} / {summary.totalCount}
+                <div className="font-mono text-[10px] font-semibold text-slate-600 tabular-nums sm:text-[11px] dark:text-slate-300">
+                  <span className="sm:hidden">{profile.totalScore} XP · </span>
+                  勳章 {summary.unlockedCount}/{summary.totalCount}
                 </div>
               </div>
             </div>
 
-            <div className="shrink-0 text-right">
-              <div className="font-mono text-sm font-black text-sky-700 tabular-nums dark:text-cyan-300">
-                {profile.totalScore}
+            <div className="flex shrink-0 items-center gap-1.5">
+              <div className="hidden text-right sm:block">
+                <div className="font-mono text-sm font-black text-sky-700 tabular-nums dark:text-cyan-300">
+                  {profile.totalScore}
+                </div>
+                <div className="text-[10px] font-bold tracking-wider text-slate-500 uppercase dark:text-slate-400">
+                  XP 積分
+                </div>
               </div>
-              <div className="text-[10px] font-bold tracking-wider text-slate-500 uppercase dark:text-slate-400">
-                XP 積分
-              </div>
+
+              <button
+                type="button"
+                onClick={() => setMobileExpanded((v) => !v)}
+                aria-expanded={mobileExpanded}
+                aria-label={mobileExpanded ? '收合勳章牆' : '展開勳章牆'}
+                className="flex h-8 w-8 items-center justify-center rounded-xl bg-slate-900/5 text-slate-700 hover:bg-sky-500/15 md:hidden dark:bg-white/10 dark:text-slate-200"
+              >
+                {mobileExpanded ? (
+                  <ChevronUp className="h-4 w-4" aria-hidden="true" />
+                ) : (
+                  <ChevronDown className="h-4 w-4" aria-hidden="true" />
+                )}
+              </button>
             </div>
           </div>
 
-          {/* Esports Metallic High-Gloss Progress Bar */}
-          <div className="mt-3">
+          {/* Esports Metallic High-Gloss Progress Bar (collapsed by default on mobile) */}
+          <div className={mobileExpanded ? 'block' : 'hidden md:block'}>
+          <div className="mt-2.5 sm:mt-3">
             <div
               className="esports-progress-track relative h-2.5 w-full overflow-hidden rounded-full p-[2px]"
               role="progressbar"
@@ -167,6 +186,7 @@ export function AchievementWallBar({
                 </button>
               );
             })}
+          </div>
           </div>
         </section>
       ) : (
@@ -315,11 +335,11 @@ export function AchievementWallBar({
           aria-modal="true"
           aria-labelledby="badge-detail-title"
           onClick={() => setSelectedBadge(null)}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/65 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/65 p-0 backdrop-blur-sm sm:items-center sm:p-4"
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 text-slate-900 shadow-2xl dark:border-slate-700 dark:bg-[#0D1424] dark:text-slate-100"
+            className="pb-safe max-h-[88dvh] w-full max-w-md overflow-y-auto rounded-t-3xl border border-slate-200 bg-white p-5 text-slate-900 shadow-2xl sm:rounded-2xl sm:p-6 dark:border-slate-700 dark:bg-[#0D1424] dark:text-slate-100"
           >
             {(() => {
               const isUnlocked = unlockedSet.has(selectedBadge.id);
@@ -349,7 +369,7 @@ export function AchievementWallBar({
                       type="button"
                       onClick={() => setSelectedBadge(null)}
                       aria-label="關閉徽章詳情"
-                      className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-100 hover:text-slate-800 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
+                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-100 hover:text-slate-800 sm:h-8 sm:w-8 sm:rounded-lg dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
                     >
                       <X className="h-4 w-4" aria-hidden="true" />
                     </button>

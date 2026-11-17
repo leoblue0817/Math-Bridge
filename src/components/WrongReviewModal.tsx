@@ -78,9 +78,9 @@ export function WrongReviewModal({
       role="dialog"
       aria-modal="true"
       aria-labelledby="wrong-review-title"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/60 p-0 backdrop-blur-sm sm:items-center sm:p-4"
     >
-      <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-slate-200 bg-[#FAF7F2] p-6 text-slate-900 shadow-2xl dark:border-slate-700 dark:bg-[#0D1424] dark:text-slate-100">
+      <div className="pb-safe max-h-[88dvh] w-full max-w-2xl overflow-y-auto rounded-t-3xl border border-slate-200 bg-[#FAF7F2] p-4 text-slate-900 shadow-2xl sm:rounded-2xl sm:p-6 dark:border-slate-700 dark:bg-[#0D1424] dark:text-slate-100">
         <div className="flex items-start justify-between gap-4 border-b border-slate-200 pb-4 dark:border-slate-800">
           <div>
             <h2 id="wrong-review-title" className="text-xl font-bold">
@@ -97,7 +97,7 @@ export function WrongReviewModal({
               onClose();
             }}
             aria-label="關閉錯題複習"
-            className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-700 hover:bg-slate-100 sm:h-9 sm:w-9 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
           >
             <X className="h-4 w-4" aria-hidden="true" />
           </button>
@@ -166,7 +166,7 @@ export function WrongReviewModal({
                               soundEngine.playWrong();
                             }
                           }}
-                          className={`flex items-center justify-between rounded-xl border px-3.5 py-2.5 text-left text-xs font-medium ${cls}`}
+                          className={`flex min-h-[44px] items-center justify-between rounded-xl border px-3.5 py-2.5 text-left text-xs font-medium ${cls}`}
                         >
                           <span>
                             ({String.fromCharCode(65 + optIdx)}) {opt}

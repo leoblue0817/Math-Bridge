@@ -75,9 +75,9 @@ export function SpaceSectorMap({
   const energyPct = Math.round((completedTasksCount / totalTasks) * 100);
 
   return (
-    <div className="mx-auto max-w-[1440px] space-y-8 px-4 pt-6 sm:px-6">
+    <div className="mx-auto max-w-[1440px] space-y-5 px-3 pt-4 sm:space-y-8 sm:px-6 sm:pt-6">
       {/* Cockpit Hero & Classroom Mode Toolbar */}
-      <section className="glass-hud-panel rounded-[28px] p-6 md:p-8">
+      <section className="glass-hud-panel rounded-[24px] p-4 sm:rounded-[28px] sm:p-6 md:p-8">
         <div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-center">
           <div className="max-w-2xl space-y-2">
             <div className="text-xs font-bold text-sky-700 dark:text-cyan-400">
@@ -91,12 +91,12 @@ export function SpaceSectorMap({
             </p>
           </div>
 
-          <div className="flex shrink-0 flex-col gap-2 self-start lg:items-end">
+          <div className="flex w-full shrink-0 flex-col gap-2 self-start lg:w-auto lg:items-end">
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
                 onClick={onSwitchToPlanet}
-                className="glass-hud-tile inline-flex items-center gap-1.5 whitespace-nowrap rounded-xl px-3.5 py-2 text-xs font-bold text-slate-800 hover:border-sky-400 dark:text-slate-100"
+                className="glass-hud-tile inline-flex min-h-[44px] items-center gap-1.5 whitespace-nowrap rounded-xl px-3.5 py-2 text-xs font-bold text-slate-800 hover:border-sky-400 sm:min-h-0 dark:text-slate-100"
               >
                 <Globe2 className="h-3.5 w-3.5 text-sky-600 dark:text-cyan-400" aria-hidden="true" />
                 <span>返回太陽系星圖</span>
@@ -104,18 +104,18 @@ export function SpaceSectorMap({
               <button
                 type="button"
                 onClick={onOpenProgressModal}
-                className="glass-hud-tile inline-flex items-center gap-1.5 whitespace-nowrap rounded-xl px-3.5 py-2 text-xs font-bold text-slate-800 hover:border-sky-400 dark:text-slate-100"
+                className="glass-hud-tile inline-flex min-h-[44px] items-center gap-1.5 whitespace-nowrap rounded-xl px-3.5 py-2 text-xs font-bold text-slate-800 hover:border-sky-400 sm:min-h-0 dark:text-slate-100"
               >
                 <SlidersHorizontal className="h-3.5 w-3.5" aria-hidden="true" />
                 <span>進度管理</span>
               </button>
             </div>
 
-            <div className="inline-flex rounded-xl border border-white/60 bg-white/50 p-1 backdrop-blur-md dark:border-slate-700/80 dark:bg-slate-900/60">
+            <div className="inline-flex w-full rounded-xl border border-white/60 bg-white/50 p-1 backdrop-blur-md sm:w-auto dark:border-slate-700/80 dark:bg-slate-900/60">
               <button
                 type="button"
                 onClick={() => onChangeMode('student')}
-                className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg px-3.5 py-2 text-xs font-bold transition-colors ${
+                className={`inline-flex min-h-[40px] flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-3.5 py-2 text-xs font-bold transition-colors sm:min-h-0 sm:flex-initial ${
                   mode === 'student'
                     ? 'bg-sky-600 text-white shadow-sm dark:bg-cyan-500 dark:text-slate-950'
                     : 'text-slate-700 hover:text-slate-950 dark:text-slate-300 dark:hover:text-white'
@@ -127,7 +127,7 @@ export function SpaceSectorMap({
               <button
                 type="button"
                 onClick={() => onChangeMode('projector')}
-                className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg px-3.5 py-2 text-xs font-bold transition-colors ${
+                className={`inline-flex min-h-[40px] flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-3.5 py-2 text-xs font-bold transition-colors sm:min-h-0 sm:flex-initial ${
                   mode === 'projector'
                     ? 'bg-amber-500 text-white shadow-sm dark:bg-amber-400 dark:text-slate-950'
                     : 'text-slate-700 hover:text-slate-950 dark:text-slate-300 dark:hover:text-white'
@@ -253,7 +253,7 @@ export function SpaceSectorMap({
                   <button
                     type="button"
                     onClick={() => onSelectSector(sec.id)}
-                    className={`flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors ${
+                    className={`flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors ${
                       allDone
                         ? 'border border-emerald-500/40 bg-emerald-100 text-emerald-900 hover:bg-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-200 dark:hover:bg-emerald-500/25'
                         : 'bg-sky-600 text-white hover:bg-sky-700 dark:bg-cyan-500 dark:text-slate-950 dark:hover:bg-cyan-400'

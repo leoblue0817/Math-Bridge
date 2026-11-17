@@ -83,7 +83,7 @@ function ConceptMatchBoard({
   const pairColors = ['#38BDF8', '#FBBF24', '#34D399', '#A78BFA'];
 
   return (
-    <div className="space-y-6 rounded-2xl border border-slate-200 bg-white/95 p-6 shadow-sm md:p-8 dark:border-slate-800 dark:bg-[#0D1424] dark:shadow-none">
+    <div className="space-y-5 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm sm:space-y-6 sm:p-6 md:p-8 dark:border-slate-800 dark:bg-[#0D1424] dark:shadow-none">
       <div className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4 dark:border-slate-800">
         <div>
           <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-sky-700 dark:text-cyan-400">
@@ -233,7 +233,7 @@ function ConceptMatchBoard({
           <button
             type="button"
             onClick={onGoNextTab}
-            className="whitespace-nowrap rounded-xl bg-sky-600 px-5 py-2 text-sm font-bold text-white hover:bg-sky-700 dark:bg-cyan-500 dark:text-slate-950 dark:hover:bg-cyan-400"
+            className="min-h-[44px] whitespace-nowrap rounded-xl bg-sky-600 px-5 py-2 text-sm font-bold text-white hover:bg-sky-700 dark:bg-cyan-500 dark:text-slate-950 dark:hover:bg-cyan-400"
           >
             前往小節微關卡 →
           </button>
@@ -397,7 +397,7 @@ function GeometryLayoutPad({
   };
 
   return (
-    <div className="space-y-6 rounded-2xl border border-slate-200 bg-white/95 p-6 shadow-sm md:p-8 dark:border-slate-800 dark:bg-[#0D1424] dark:shadow-none">
+    <div className="space-y-5 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm sm:space-y-6 sm:p-6 md:p-8 dark:border-slate-800 dark:bg-[#0D1424] dark:shadow-none">
       <div className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4 dark:border-slate-800">
         <div>
           <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-400">
@@ -413,16 +413,16 @@ function GeometryLayoutPad({
         <button
           type="button"
           onClick={resetGrid}
-          className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:border-sky-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+          className="inline-flex min-h-[40px] items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:border-sky-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
         >
           <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
           <span>清空網格</span>
         </button>
       </div>
 
-      <div className="grid grid-cols-1 items-center gap-6 lg:grid-cols-12">
+      <div className="grid grid-cols-1 items-center gap-5 sm:gap-6 lg:grid-cols-12">
         {/* Interactive Grid Pad */}
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-slate-700 bg-slate-900 p-6 lg:col-span-6 dark:border-slate-800 dark:bg-[#080D1A]">
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-slate-700 bg-slate-900 p-4 sm:p-6 lg:col-span-6 dark:border-slate-800 dark:bg-[#080D1A]">
           <div
             className="relative grid gap-2"
             style={{
@@ -558,11 +558,11 @@ function GeometryLayoutPad({
             </div>
           )}
 
-          <div className="flex flex-wrap items-center justify-end gap-3 pt-1">
+          <div className="flex flex-wrap items-center justify-end gap-2.5 pt-1 sm:gap-3">
             <button
               type="button"
               onClick={verifyLayout}
-              className="whitespace-nowrap rounded-xl bg-amber-500 px-5 py-2.5 text-sm font-bold text-white hover:bg-amber-600 dark:bg-amber-400 dark:text-slate-950 dark:hover:bg-amber-300"
+              className="min-h-[44px] flex-1 whitespace-nowrap rounded-xl bg-amber-500 px-4 py-2.5 text-sm font-bold text-white hover:bg-amber-600 sm:flex-initial sm:px-5 dark:bg-amber-400 dark:text-slate-950 dark:hover:bg-amber-300"
             >
               {isCompleted ? '✓ 再次驗證佈置' : '確認佈置成果（+25分）'}
             </button>
@@ -570,7 +570,7 @@ function GeometryLayoutPad({
             <button
               type="button"
               onClick={onGoNextTab}
-              className="whitespace-nowrap rounded-xl bg-sky-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-sky-700 dark:bg-cyan-500 dark:text-slate-950 dark:hover:bg-cyan-400"
+              className="min-h-[44px] flex-1 whitespace-nowrap rounded-xl bg-sky-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-sky-700 sm:flex-initial sm:px-5 dark:bg-cyan-500 dark:text-slate-950 dark:hover:bg-cyan-400"
             >
               前往小節微關卡 →
             </button>

@@ -259,13 +259,13 @@ export function ProgressManagerModal({
       role="dialog"
       aria-modal="true"
       aria-labelledby="progress-modal-title"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/65 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/65 p-0 backdrop-blur-sm sm:items-center sm:p-4"
     >
-      <div className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-slate-200 bg-[#FAF7F2] p-6 text-slate-900 shadow-2xl dark:border-slate-700 dark:bg-[#0D1424] dark:text-slate-100">
+      <div className="pb-safe max-h-[90dvh] w-full max-w-3xl overflow-y-auto rounded-t-3xl border border-slate-200 bg-[#FAF7F2] p-4 text-slate-900 shadow-2xl sm:rounded-2xl sm:p-6 dark:border-slate-700 dark:bg-[#0D1424] dark:text-slate-100">
         {/* Header */}
-        <div className="flex items-start justify-between gap-4 border-b border-slate-200 pb-4 dark:border-slate-800">
-          <div>
-            <h2 id="progress-modal-title" className="text-xl font-extrabold">
+        <div className="flex items-start justify-between gap-3 border-b border-slate-200 pb-4 dark:border-slate-800">
+          <div className="min-w-0">
+            <h2 id="progress-modal-title" className="text-lg font-extrabold sm:text-xl">
               進度同步與題庫管理中心
             </h2>
             <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">
@@ -280,28 +280,28 @@ export function ProgressManagerModal({
               onClose();
             }}
             aria-label="關閉管理中心"
-            className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-700 hover:bg-slate-100 sm:h-9 sm:w-9 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
           >
             <X className="h-4 w-4" aria-hidden="true" />
           </button>
         </div>
 
         {/* Top Modal Switch Tabs */}
-        <div className="mt-4 grid grid-cols-2 gap-2 rounded-xl border border-slate-200 bg-white p-1.5 dark:border-slate-800 dark:bg-[#080D1A]">
+        <div className="mt-4 grid grid-cols-2 gap-1.5 rounded-xl border border-slate-200 bg-white p-1.5 sm:gap-2 dark:border-slate-800 dark:bg-[#080D1A]">
           <button
             type="button"
             onClick={() => {
               soundEngine.playClick();
               setModalTab('progress');
             }}
-            className={`flex items-center justify-center gap-2 rounded-lg py-2 text-xs font-bold ${
+            className={`flex min-h-[44px] items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-xs font-bold ${
               modalTab === 'progress'
                 ? 'bg-sky-600 text-white dark:bg-cyan-500 dark:text-slate-950'
                 : 'text-slate-600 hover:text-slate-900 dark:text-slate-300'
             }`}
           >
-            <Cloud className="h-4 w-4" aria-hidden="true" />
-            <span>雲端同步 ＆ 學生進度</span>
+            <Cloud className="h-4 w-4 shrink-0" aria-hidden="true" />
+            <span className="truncate">雲端 ＆ 學生進度</span>
           </button>
           <button
             type="button"
@@ -309,14 +309,14 @@ export function ProgressManagerModal({
               soundEngine.playClick();
               setModalTab('questionBank');
             }}
-            className={`flex items-center justify-center gap-2 rounded-lg py-2 text-xs font-bold ${
+            className={`flex min-h-[44px] items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-xs font-bold ${
               modalTab === 'questionBank'
                 ? 'bg-amber-500 text-white dark:bg-amber-400 dark:text-slate-950'
                 : 'text-slate-600 hover:text-slate-900 dark:text-slate-300'
             }`}
           >
-            <FileSpreadsheet className="h-4 w-4" aria-hidden="true" />
-            <span>Excel / Word 圖文題庫（已擴充 {customQuestions.length} 題）</span>
+            <FileSpreadsheet className="h-4 w-4 shrink-0" aria-hidden="true" />
+            <span className="truncate">圖文題庫（+{customQuestions.length}）</span>
           </button>
         </div>
 
@@ -414,17 +414,17 @@ export function ProgressManagerModal({
                 ))}
               </div>
 
-              <form onSubmit={handleAddOrSwitchName} className="mt-3 flex gap-2">
+              <form onSubmit={handleAddOrSwitchName} className="mt-3 flex flex-col gap-2 sm:flex-row">
                 <input
                   type="text"
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
                   placeholder="輸入新同學名字（例：小明）"
-                  className="flex-1 rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-xs text-slate-900 placeholder:text-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                  className="min-h-[40px] flex-1 rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-xs text-slate-900 placeholder:text-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
                 />
                 <button
                   type="submit"
-                  className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-xl bg-sky-600 px-3.5 py-2 text-xs font-semibold text-white hover:bg-sky-700 dark:bg-cyan-500 dark:text-slate-950"
+                  className="inline-flex min-h-[40px] items-center justify-center gap-1.5 whitespace-nowrap rounded-xl bg-sky-600 px-3.5 py-2 text-xs font-semibold text-white hover:bg-sky-700 dark:bg-cyan-500 dark:text-slate-950"
                 >
                   <UserPlus className="h-3.5 w-3.5" aria-hidden="true" />
                   <span>新增／切換</span>
@@ -653,12 +653,12 @@ export function ProgressManagerModal({
                 可一鍵匯出全部或指定特定單元／微關卡小節為 Excel 活頁簿，方便教研編輯或批次加題後再匯回系統。
               </p>
 
-              <div className="mt-3 flex flex-wrap items-center gap-2">
+              <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
                 <select
                   aria-label="選擇匯出題庫範圍"
                   value={qbExportScope}
                   onChange={(e) => setQbExportScope(e.target.value)}
-                  className="min-w-[220px] flex-1 rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                  className="min-h-[40px] w-full min-w-0 rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-800 sm:flex-1 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
                 >
                   <option value="all">全部八大主題題庫（含擴充題）</option>
                   {sectorsSource.map((sec) => (
@@ -676,7 +676,7 @@ export function ProgressManagerModal({
                 <button
                   type="button"
                   onClick={handleExportExcel}
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-700 dark:bg-emerald-500 dark:text-slate-950"
+                  className="inline-flex min-h-[40px] shrink-0 items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-700 dark:bg-emerald-500 dark:text-slate-950"
                 >
                   <Download className="h-3.5 w-3.5" aria-hidden="true" />
                   <span>匯出 Excel (.xlsx)</span>

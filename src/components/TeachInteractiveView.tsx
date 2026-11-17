@@ -25,7 +25,7 @@ export function SectorMiniExplorer({ sectorId }: { sectorId: SectorId }) {
     const prod = parA * parB;
     const labelOf = (v: number) => (v % 2 === 0 ? '偶數' : '奇數');
     return (
-      <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-[#080D1A] dark:shadow-none">
+      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5 dark:border-slate-800 dark:bg-[#080D1A] dark:shadow-none">
         <div className="text-xs font-semibold text-sky-700 dark:text-cyan-400">互動實驗器 · 奇偶運算即時驗證</div>
         <h3 className="mt-1 text-base font-bold text-slate-900 dark:text-white">
           調整兩個整數（含 0），觀察加減與乘積的奇偶性
@@ -427,7 +427,7 @@ export function SectorMiniExplorer({ sectorId }: { sectorId: SectorId }) {
             點擊調整左視圖三欄高度，觀察右視圖如何左右鏡像翻轉
           </h3>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {mirrorHeight.map((h, i) => (
             <button
               key={i}
@@ -439,7 +439,7 @@ export function SectorMiniExplorer({ sectorId }: { sectorId: SectorId }) {
                   return next;
                 })
               }
-              className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 font-mono text-xs font-semibold text-sky-800 dark:border-slate-700 dark:bg-slate-900 dark:text-cyan-200"
+              className="min-h-[40px] rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 font-mono text-xs font-semibold text-sky-800 dark:border-slate-700 dark:bg-slate-900 dark:text-cyan-200"
             >
               第{i + 1}欄：{h}層
             </button>

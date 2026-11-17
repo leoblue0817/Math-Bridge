@@ -210,16 +210,16 @@ export function KenKenLab({ isCompleted, onComplete }: KenKenLabProps) {
   const ss = String(secondsLeft % 60).padStart(2, '0');
 
   return (
-    <div className="space-y-6 rounded-2xl border border-slate-200 bg-white/95 p-6 shadow-sm dark:border-slate-800 dark:bg-[#0D1424] dark:shadow-none">
-      <div className="flex flex-col justify-between gap-4 border-b border-slate-200 pb-5 lg:flex-row lg:items-end dark:border-slate-800">
+    <div className="space-y-5 rounded-2xl border border-slate-200 bg-white/95 p-3.5 shadow-sm sm:space-y-6 sm:p-6 dark:border-slate-800 dark:bg-[#0D1424] dark:shadow-none">
+      <div className="flex flex-col justify-between gap-4 border-b border-slate-200 pb-4 sm:pb-5 lg:flex-row lg:items-end dark:border-slate-800">
         <div>
           <p className="text-xs font-semibold text-sky-700 dark:text-cyan-400">
             創意課程 · 主題 5 算獨邏輯
           </p>
-          <h3 className="mt-1 text-xl font-bold text-slate-900 dark:text-white">
+          <h3 className="mt-1 text-lg font-bold text-slate-900 sm:text-xl dark:text-white">
             KenKen 數獨（算獨對決）
           </h3>
-          <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+          <p className="mt-1 text-xs leading-relaxed text-slate-600 sm:text-sm dark:text-slate-300">
             每列每行填入 1～{n} 不重複，且粗線框內的數字須透過加減乘除湊出左上角目標值！
           </p>
         </div>
@@ -228,7 +228,7 @@ export function KenKenLab({ isCompleted, onComplete }: KenKenLabProps) {
           <button
             type="button"
             onClick={() => setTimerRunning((v) => !v)}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 font-mono text-slate-700 tabular-nums dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+            className="inline-flex min-h-[38px] items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 font-mono text-slate-700 tabular-nums dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
           >
             <Timer className="h-3.5 w-3.5 text-sky-600 dark:text-cyan-400" aria-hidden="true" />
             <span>限時 {mm}:{ss}</span>
@@ -245,7 +245,7 @@ export function KenKenLab({ isCompleted, onComplete }: KenKenLabProps) {
             key={p.id}
             type="button"
             onClick={() => selectLevel(idx)}
-            className={`rounded-lg px-3.5 py-2 text-xs font-semibold ${
+            className={`min-h-[40px] rounded-lg px-3.5 py-2 text-xs font-semibold ${
               levelIdx === idx
                 ? 'bg-sky-600 text-white dark:bg-cyan-500 dark:text-slate-950'
                 : solvedMap[p.id]
@@ -260,7 +260,7 @@ export function KenKenLab({ isCompleted, onComplete }: KenKenLabProps) {
         <button
           type="button"
           onClick={() => selectLevel(levelIdx)}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
+          className="inline-flex min-h-[40px] items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
         >
           <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
           <span>清空</span>
@@ -268,20 +268,20 @@ export function KenKenLab({ isCompleted, onComplete }: KenKenLabProps) {
         <button
           type="button"
           onClick={() => setShowHint((v) => !v)}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200"
+          className="inline-flex min-h-[40px] items-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200"
         >
           <HelpCircle className="h-3.5 w-3.5" aria-hidden="true" />
           <span>{showHint ? '隱藏解題提示' : '查看解題提示'}</span>
         </button>
       </div>
 
-      <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-12">
+      <div className="grid grid-cols-1 items-start gap-6 sm:gap-8 lg:grid-cols-12">
         {/* KenKen Board */}
-        <div className="flex justify-center rounded-xl border border-slate-200 bg-slate-900 p-5 lg:col-span-7 dark:border-slate-800 dark:bg-[#080D1A]">
+        <div className="flex justify-center rounded-xl border border-slate-200 bg-slate-900 p-3 sm:p-5 lg:col-span-7 dark:border-slate-800 dark:bg-[#080D1A]">
           <div
-            className="grid border-2 border-cyan-300 bg-slate-950"
+            className="grid w-full max-w-[320px] border-2 border-cyan-300 bg-slate-950 sm:w-auto sm:max-w-none"
             style={{
-              gridTemplateColumns: `repeat(${n}, minmax(48px, 64px))`,
+              gridTemplateColumns: `repeat(${n}, minmax(0, 64px))`,
             }}
           >
             {grid.map((row, r) =>
@@ -301,7 +301,7 @@ export function KenKenLab({ isCompleted, onComplete }: KenKenLabProps) {
                     key={`${r}-${c}`}
                     type="button"
                     onClick={() => setSelectedCell([r, c])}
-                    className={`relative flex aspect-square items-center justify-center font-mono text-2xl font-bold tabular-nums transition-colors ${
+                    className={`relative flex aspect-square items-center justify-center font-mono text-xl font-bold tabular-nums transition-colors sm:text-2xl ${
                       isSel
                         ? 'bg-cyan-500/20'
                         : isBad
@@ -314,7 +314,7 @@ export function KenKenLab({ isCompleted, onComplete }: KenKenLabProps) {
                     }`}
                   >
                     {anchor && (
-                      <span className="pointer-events-none absolute top-0.5 left-1 font-mono text-[11px] font-bold text-amber-300">
+                      <span className="pointer-events-none absolute top-0.5 left-1 font-mono text-[10px] font-bold text-amber-300 sm:text-[11px]">
                         {formatCageLabel(anchor)}
                       </span>
                     )}
@@ -335,15 +335,15 @@ export function KenKenLab({ isCompleted, onComplete }: KenKenLabProps) {
 
         {/* Keypad & Status */}
         <div className="space-y-4 lg:col-span-5">
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-5 dark:border-slate-800 dark:bg-[#080D1A]">
-            <div className="flex items-center justify-between gap-2">
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 sm:p-5 dark:border-slate-800 dark:bg-[#080D1A]">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <span className="text-sm font-bold text-slate-900 dark:text-white">
                 數字輸入盤（可用鍵盤 1～{n}）
               </span>
               <button
                 type="button"
                 onClick={() => setPencilMode((v) => !v)}
-                className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold ${
+                className={`inline-flex min-h-[36px] items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold ${
                   pencilMode
                     ? 'bg-amber-500 text-white dark:bg-amber-400 dark:text-slate-950'
                     : 'border border-slate-200 bg-white text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300'
@@ -360,7 +360,7 @@ export function KenKenLab({ isCompleted, onComplete }: KenKenLabProps) {
                   key={num}
                   type="button"
                   onClick={() => applyValue(num)}
-                  className="rounded-xl border border-slate-200 bg-white py-3 font-mono text-lg font-bold text-slate-900 hover:border-sky-400 hover:bg-sky-50 tabular-nums dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:hover:border-cyan-400 dark:hover:bg-cyan-500/15"
+                  className="min-h-[44px] rounded-xl border border-slate-200 bg-white py-2.5 font-mono text-lg font-bold text-slate-900 hover:border-sky-400 hover:bg-sky-50 tabular-nums sm:py-3 dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:hover:border-cyan-400 dark:hover:bg-cyan-500/15"
                 >
                   {num}
                 </button>
@@ -368,7 +368,7 @@ export function KenKenLab({ isCompleted, onComplete }: KenKenLabProps) {
               <button
                 type="button"
                 onClick={() => applyValue(0)}
-                className="inline-flex items-center justify-center gap-1 rounded-xl border border-slate-200 bg-white py-3 text-xs font-semibold text-slate-700 hover:border-rose-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
+                className="inline-flex min-h-[44px] items-center justify-center gap-1 rounded-xl border border-slate-200 bg-white py-2.5 text-xs font-semibold text-slate-700 hover:border-rose-400 sm:py-3 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
               >
                 <Eraser className="h-4 w-4" aria-hidden="true" />
                 <span>清除</span>
@@ -378,7 +378,7 @@ export function KenKenLab({ isCompleted, onComplete }: KenKenLabProps) {
             <button
               type="button"
               onClick={checkSolution}
-              className="mt-4 w-full rounded-xl bg-sky-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-sky-700 dark:bg-cyan-500 dark:text-slate-950 dark:hover:bg-cyan-400"
+              className="mt-4 min-h-[44px] w-full rounded-xl bg-sky-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-sky-700 dark:bg-cyan-500 dark:text-slate-950 dark:hover:bg-cyan-400"
             >
               檢查本關解答
             </button>

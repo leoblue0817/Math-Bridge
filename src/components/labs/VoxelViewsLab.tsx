@@ -75,14 +75,16 @@ function ViewGridPreview({
   cells: boolean[][];
 }) {
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-3 text-center dark:border-slate-800 dark:bg-slate-950/90">
-      <div className="mb-2 text-xs font-semibold text-slate-700 dark:text-slate-300">{title}</div>
+    <div className="rounded-lg border border-slate-200 bg-white p-2 text-center sm:p-3 dark:border-slate-800 dark:bg-slate-950/90">
+      <div className="mb-1.5 text-[11px] font-semibold text-slate-700 sm:mb-2 sm:text-xs dark:text-slate-300">
+        {title}
+      </div>
       <div className="mx-auto grid w-fit grid-cols-3 gap-1">
         {cells.map((row, r) =>
           row.map((on, c) => (
             <div
               key={`${r}-${c}`}
-              className={`h-5 w-5 rounded-[3px] border ${
+              className={`h-4 w-4 rounded-[3px] border sm:h-5 sm:w-5 ${
                 on ? colorClass : 'border-slate-200 bg-slate-100 dark:border-slate-800 dark:bg-slate-900'
               }`}
             />
@@ -204,16 +206,16 @@ export function VoxelViewsLab({ isCompleted, onComplete }: VoxelViewsLabProps) {
   }
 
   return (
-    <div className="space-y-6 rounded-2xl border border-slate-200 bg-white/95 p-6 shadow-sm dark:border-slate-800 dark:bg-[#0D1424] dark:shadow-none">
-      <div className="flex flex-col justify-between gap-4 border-b border-slate-200 pb-5 lg:flex-row lg:items-end dark:border-slate-800">
+    <div className="space-y-5 rounded-2xl border border-slate-200 bg-white/95 p-3.5 shadow-sm sm:space-y-6 sm:p-6 dark:border-slate-800 dark:bg-[#0D1424] dark:shadow-none">
+      <div className="flex flex-col justify-between gap-4 border-b border-slate-200 pb-4 sm:pb-5 lg:flex-row lg:items-end dark:border-slate-800">
         <div>
           <p className="text-xs font-semibold text-sky-700 dark:text-cyan-400">
             創意課程 · 主題 8 空間幾何
           </p>
-          <h3 className="mt-1 text-xl font-bold text-slate-900 dark:text-white">
+          <h3 className="mt-1 text-lg font-bold text-slate-900 sm:text-xl dark:text-white">
             立體積木建築師－三視圖挑戰
           </h3>
-          <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+          <p className="mt-1 text-xs leading-relaxed text-slate-600 sm:text-sm dark:text-slate-300">
             點擊右側 3×3 底座格子疊加積木（最多 3 層），觀察左方立體模型與三視圖即時同步變化！
           </p>
         </div>
@@ -222,7 +224,7 @@ export function VoxelViewsLab({ isCompleted, onComplete }: VoxelViewsLabProps) {
           <button
             type="button"
             onClick={() => setMode('challenge')}
-            className={`rounded-lg px-3.5 py-2 text-xs font-semibold ${
+            className={`min-h-[40px] rounded-lg px-3.5 py-2 text-xs font-semibold ${
               mode === 'challenge'
                 ? 'bg-sky-600 text-white dark:bg-cyan-500 dark:text-slate-950'
                 : 'border border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300'
@@ -236,7 +238,7 @@ export function VoxelViewsLab({ isCompleted, onComplete }: VoxelViewsLabProps) {
               setMode('sandbox');
               setHeights(createEmptyHeights());
             }}
-            className={`inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-semibold ${
+            className={`inline-flex min-h-[40px] items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-semibold ${
               mode === 'sandbox'
                 ? 'bg-amber-500 text-white dark:bg-amber-400 dark:text-slate-950'
                 : 'border border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300'
@@ -255,7 +257,7 @@ export function VoxelViewsLab({ isCompleted, onComplete }: VoxelViewsLabProps) {
               key={ch.id}
               type="button"
               onClick={() => selectChallenge(idx)}
-              className={`rounded-lg px-3.5 py-2 text-xs font-semibold ${
+              className={`min-h-[40px] rounded-lg px-3.5 py-2 text-xs font-semibold ${
                 chIdx === idx
                   ? 'bg-sky-600 text-white dark:bg-cyan-500 dark:text-slate-950'
                   : solvedMap[ch.id]
@@ -270,10 +272,10 @@ export function VoxelViewsLab({ isCompleted, onComplete }: VoxelViewsLabProps) {
         </div>
       )}
 
-      <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-12">
+      <div className="grid grid-cols-1 items-start gap-6 sm:gap-8 lg:grid-cols-12">
         {/* Left: Isometric 3D Preview + Interactive Base Pad */}
-        <div className="space-y-4 rounded-xl border border-slate-200 bg-slate-900 p-5 lg:col-span-6 dark:border-slate-800 dark:bg-[#080D1A]">
-          <div className="flex items-center justify-between text-xs text-slate-300">
+        <div className="space-y-4 rounded-xl border border-slate-200 bg-slate-900 p-3.5 sm:p-5 lg:col-span-6 dark:border-slate-800 dark:bg-[#080D1A]">
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-300">
             <span>即時 3D 積木預覽（前方↙ · 右方↘）</span>
             <span className="font-mono font-bold text-amber-300 tabular-nums">
               目前已使用：{totalCubes} 塊積木
@@ -281,7 +283,14 @@ export function VoxelViewsLab({ isCompleted, onComplete }: VoxelViewsLabProps) {
           </div>
 
           <div className="flex justify-center">
-            <svg width="340" height="240" viewBox="0 0 340 240" role="img" aria-label="立體積木等角視圖">
+            <svg
+              width="340"
+              height="240"
+              viewBox="0 0 340 240"
+              role="img"
+              aria-label="立體積木等角視圖"
+              className="h-auto w-full max-w-[330px] touch-manipulation sm:max-w-[340px]"
+            >
               {/* Base grid diamond floor */}
               {Array.from({ length: 3 }, (_, r) =>
                 Array.from({ length: 3 }, (_, c) => {
@@ -392,56 +401,56 @@ export function VoxelViewsLab({ isCompleted, onComplete }: VoxelViewsLabProps) {
             <div className="mx-auto grid w-fit grid-cols-3 gap-2">
               {heights.map((row, r) =>
                 row.map((h, c) => (
-                  <button
-                    key={`pad-${r}-${c}`}
-                    type="button"
-                    onClick={() => handleCellAction(r, c)}
-                    className={`flex h-14 w-16 flex-col items-center justify-center rounded-lg border font-mono transition-colors ${
-                      h > 0
-                        ? 'border-cyan-400/70 bg-cyan-500/20 text-white'
-                        : 'border-slate-700 bg-slate-950 text-slate-500 hover:border-slate-500'
-                    }`}
-                  >
-                    <span className="text-lg font-bold tabular-nums">{h}</span>
-                    <span className="text-[10px] text-slate-400">
-                      {r === 0 ? '後' : r === 1 ? '中' : '前'}
-                    </span>
-                  </button>
-                ))
-              )}
-            </div>
+                <button
+                  key={`pad-${r}-${c}`}
+                  type="button"
+                  onClick={() => handleCellAction(r, c)}
+                  className={`flex h-14 w-14 flex-col items-center justify-center rounded-lg border font-mono transition-colors sm:w-16 ${
+                    h > 0
+                      ? 'border-cyan-400/70 bg-cyan-500/20 text-white'
+                      : 'border-slate-700 bg-slate-950 text-slate-500 hover:border-slate-500'
+                  }`}
+                >
+                  <span className="text-lg font-bold tabular-nums">{h}</span>
+                  <span className="text-[10px] text-slate-400">
+                    {r === 0 ? '後' : r === 1 ? '中' : '前'}
+                  </span>
+                </button>
+              ))
+            )}
           </div>
         </div>
+      </div>
 
-        {/* Right: Target vs Live Projections */}
-        <div className="space-y-4 lg:col-span-6">
-          {mode === 'challenge' && (
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-5 dark:border-slate-800 dark:bg-[#080D1A]">
-              <div className="text-sm font-bold text-slate-900 dark:text-white">{challenge.title}</div>
-              <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">{challenge.subtitle}</p>
-              <div className="mt-4 grid grid-cols-3 gap-3">
-                <ViewGridPreview
-                  title="目標前視圖"
-                  colorClass="border-sky-400 bg-sky-400 dark:border-cyan-300 dark:bg-cyan-400"
-                  cells={heightColsToGrid(challenge.frontCols)}
-                />
-                <ViewGridPreview
-                  title="目標上視圖"
-                  colorClass="border-rose-400 bg-rose-400 dark:border-rose-300 dark:bg-rose-400"
-                  cells={challenge.topMask.map((row) => row.map((v) => v === 1))}
-                />
-                <ViewGridPreview
-                  title="目標右視圖"
-                  colorClass="border-amber-400 bg-amber-400 dark:border-amber-300 dark:bg-amber-400"
-                  cells={heightColsToGrid(challenge.rightCols)}
-                />
-              </div>
+      {/* Right: Target vs Live Projections */}
+      <div className="space-y-4 lg:col-span-6">
+        {mode === 'challenge' && (
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 sm:p-5 dark:border-slate-800 dark:bg-[#080D1A]">
+            <div className="text-sm font-bold text-slate-900 dark:text-white">{challenge.title}</div>
+            <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">{challenge.subtitle}</p>
+            <div className="mt-4 grid grid-cols-3 gap-2 sm:gap-3">
+              <ViewGridPreview
+                title="目標前視圖"
+                colorClass="border-sky-400 bg-sky-400 dark:border-cyan-300 dark:bg-cyan-400"
+                cells={heightColsToGrid(challenge.frontCols)}
+              />
+              <ViewGridPreview
+                title="目標上視圖"
+                colorClass="border-rose-400 bg-rose-400 dark:border-rose-300 dark:bg-rose-400"
+                cells={challenge.topMask.map((row) => row.map((v) => v === 1))}
+              />
+              <ViewGridPreview
+                title="目標右視圖"
+                colorClass="border-amber-400 bg-amber-400 dark:border-amber-300 dark:bg-amber-400"
+                cells={heightColsToGrid(challenge.rightCols)}
+              />
             </div>
-          )}
+          </div>
+        )}
 
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-5 dark:border-slate-800 dark:bg-[#080D1A]">
-            <div className="text-sm font-bold text-slate-900 dark:text-white">目前作品即時三視圖投影</div>
-            <div className="mt-4 grid grid-cols-3 gap-3">
+        <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 sm:p-5 dark:border-slate-800 dark:bg-[#080D1A]">
+          <div className="text-sm font-bold text-slate-900 dark:text-white">目前作品即時三視圖投影</div>
+          <div className="mt-4 grid grid-cols-3 gap-2 sm:gap-3">
               <ViewGridPreview
                 title="目前前視圖"
                 colorClass="border-sky-400 bg-sky-400 dark:border-cyan-300 dark:bg-cyan-400"

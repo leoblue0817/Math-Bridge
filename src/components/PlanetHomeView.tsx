@@ -231,7 +231,6 @@ const PLANET_SUBTITLE_MAP: Record<SectorId, string> = {
 const _vec3A = new THREE.Vector3();
 const _vec3B = new THREE.Vector3();
 const _vec3C = new THREE.Vector3();
-const _overviewCamPos = new THREE.Vector3(0, 19.5, 35.5);
 const _overviewTarget = new THREE.Vector3(0, 0, 0);
 
 interface PlanetRuntime {
@@ -268,7 +267,9 @@ export function PlanetHomeView({
   const [focusedSector, setFocusedSector] = useState<SectorId | null>(null);
   const [hoveredSector, setHoveredSector] = useState<SectorId | null>(null);
   const [orbitPaused, setOrbitPaused] = useState(false);
-  const [dockOpen, setDockOpen] = useState(true);
+  const [dockOpen, setDockOpen] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth >= 768 : true
+  );
 
   const canvasMountRef = useRef<HTMLDivElement | null>(null);
   const labelRefs = useRef<Partial<Record<SectorId, HTMLButtonElement | null>>>({});
@@ -371,6 +372,10 @@ export function PlanetHomeView({
     if (!container) return;
 
     const isSoftwareGl = detectSoftwareWebGL();
+    const isCoarsePointer =
+      typeof window !== 'undefined' &&
+      (window.innerWidth < 768 || window.matchMedia('(pointer: coarse)').matches);
+    const isMobileTier = isSoftwareGl || isCoarsePointer;
     const width = Math.max(container.clientWidth, 320);
     const height = Math.max(container.clientHeight, 320);
 
@@ -380,7 +385,13 @@ export function PlanetHomeView({
       powerPreference: 'high-performance',
       alpha: false,
     });
-    renderer.setPixelRatio(isSoftwareGl ? 1 : Math.min(window.devicePixelRatio, 2));
+    renderer.setPixelRatio(
+      isSoftwareGl
+        ? 1
+        : isMobileTier
+          ? Math.min(window.devicePixelRatio, 1.5)
+          : Math.min(window.devicePixelRatio, 2)
+    );
     renderer.setSize(width, height);
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.08;
@@ -409,15 +420,25 @@ export function PlanetHomeView({
     );
     scene.fog = fog;
 
-    // 3. Camera & OrbitControls
+    // 3. Camera & OrbitControls (dynamic portrait FOV & pullback distance)
+    const dynOverviewPos = new THREE.Vector3(0, 19.5, 35.5);
     const camera = new THREE.PerspectiveCamera(46, width / height, 0.25, 220);
-    camera.position.copy(_overviewCamPos);
+    const applyResponsiveCamera = (w: number, h: number) => {
+      const aspect = w / h;
+      const isPortrait = aspect < 1;
+      camera.aspect = aspect;
+      camera.fov = isPortrait ? 56 : 46;
+      camera.updateProjectionMatrix();
+      dynOverviewPos.set(0, isPortrait ? 23.5 : 19.5, isPortrait ? 45 : 35.5);
+    };
+    applyResponsiveCamera(width, height);
+    camera.position.copy(dynOverviewPos);
 
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = !isSoftwareGl;
     controls.dampingFactor = 0.065;
     controls.minDistance = 4.2;
-    controls.maxDistance = 68;
+    controls.maxDistance = 74;
     controls.maxPolarAngle = Math.PI * 0.84;
     controls.minPolarAngle = 0.14;
     controls.rotateSpeed = 0.72;
@@ -527,8 +548,8 @@ export function PlanetHomeView({
     solarRingB.rotation.z = 0.55;
     sunGroup.add(solarRingB);
 
-    // 6. 3D Starfield (1,400 multi-tint stars)
-    const starCount = isSoftwareGl ? 750 : 1400;
+    // 6. 3D Starfield (tiered for mobile & software WebGL)
+    const starCount = isMobileTier ? 650 : 1400;
     const starPositions = new Float32Array(starCount * 3);
     const starColors = new Float32Array(starCount * 3);
     const palette = [
@@ -566,7 +587,7 @@ export function PlanetHomeView({
     scene.add(starField);
 
     // 7. Instanced Asteroid Belt between s4 (r=14.5) and s5 (r=17.6)
-    const asteroidCount = isSoftwareGl ? 90 : 175;
+    const asteroidCount = isMobileTier ? 80 : 175;
     const asteroidGeo = trackGeo(new THREE.IcosahedronGeometry(0.15, 0));
     const asteroidMat = trackMat(
       new THREE.MeshStandardMaterial({
@@ -645,8 +666,8 @@ export function PlanetHomeView({
     const planetRuntimes: Record<SectorId, PlanetRuntime> = {} as Record<SectorId, PlanetRuntime>;
     const raycastTargets: THREE.Object3D[] = [];
 
-    const sphereSegW = isSoftwareGl ? 28 : 48;
-    const sphereSegH = isSoftwareGl ? 20 : 32;
+    const sphereSegW = isMobileTier ? 28 : 48;
+    const sphereSegH = isMobileTier ? 20 : 32;
 
     SECTORS.forEach((sec) => {
       const cfg = SOLAR_PLANET_CONFIGS[sec.id];
@@ -807,7 +828,9 @@ export function PlanetHomeView({
         })
       );
       const hitProxy = new THREE.Mesh(
-        trackGeo(new THREE.SphereGeometry(cfg.planetRadius * 1.62, 12, 12)),
+        trackGeo(
+          new THREE.SphereGeometry(cfg.planetRadius * (isCoarsePointer ? 1.82 : 1.62), 12, 12)
+        ),
         proxyMat
       );
       hitProxy.layers.set(1);
@@ -922,7 +945,7 @@ export function PlanetHomeView({
       const dx = e.clientX - pointerDownPos.x;
       const dy = e.clientY - pointerDownPos.y;
       renderer.domElement.style.cursor = hoveredRef.current ? 'pointer' : 'grab';
-      if (Math.hypot(dx, dy) > 6) return; // Dragged to orbit; don't trigger click
+      if (Math.hypot(dx, dy) > 9) return; // Dragged to orbit; don't trigger click
 
       const hitId = pickSectorAt(e.clientX, e.clientY);
       if (hitId) {
@@ -956,8 +979,7 @@ export function PlanetHomeView({
       if (!entry) return;
       const w = Math.max(entry.contentRect.width, 320);
       const h = Math.max(entry.contentRect.height, 320);
-      camera.aspect = w / h;
-      camera.updateProjectionMatrix();
+      applyResponsiveCamera(w, h);
       renderer.setSize(w, h);
     });
     resizeObserver.observe(container);
@@ -1130,7 +1152,7 @@ export function PlanetHomeView({
           // Compute outward vantage direction from the Sun so sun lights the planet face nicely!
           _vec3B.copy(_vec3A).normalize();
           if (_vec3B.lengthSq() < 0.01) _vec3B.set(0, 0, 1);
-          const dist = pr.planetRadius * 4.2 + 2.4;
+          const dist = pr.planetRadius * (camera.aspect < 1 ? 4.85 : 4.2) + 2.4;
           _vec3C.set(
             _vec3A.x + _vec3B.x * dist + _vec3B.z * (dist * 0.42),
             _vec3A.y + pr.planetRadius * 1.85 + 1.15,
@@ -1153,11 +1175,11 @@ export function PlanetHomeView({
           controls.target.y = THREE.MathUtils.damp(controls.target.y, _overviewTarget.y, 5.0, delta);
           controls.target.z = THREE.MathUtils.damp(controls.target.z, _overviewTarget.z, 5.0, delta);
 
-          camera.position.x = THREE.MathUtils.damp(camera.position.x, _overviewCamPos.x, 4.2, delta);
-          camera.position.y = THREE.MathUtils.damp(camera.position.y, _overviewCamPos.y, 4.2, delta);
-          camera.position.z = THREE.MathUtils.damp(camera.position.z, _overviewCamPos.z, 4.2, delta);
+          camera.position.x = THREE.MathUtils.damp(camera.position.x, dynOverviewPos.x, 4.2, delta);
+          camera.position.y = THREE.MathUtils.damp(camera.position.y, dynOverviewPos.y, 4.2, delta);
+          camera.position.z = THREE.MathUtils.damp(camera.position.z, dynOverviewPos.z, 4.2, delta);
 
-          if (camera.position.distanceTo(_overviewCamPos) < 0.12) {
+          if (camera.position.distanceTo(dynOverviewPos) < 0.12) {
             isAutoGlidingRef.current = false;
           }
         }
@@ -1169,6 +1191,11 @@ export function PlanetHomeView({
       // Project 3D Planet Nameplate Overlays directly via DOM refs (zero React re-renders!)
       const canvasW = container.clientWidth;
       const canvasH = container.clientHeight;
+      const isNarrow = canvasW < 768;
+      const topPad = isNarrow ? 74 : 70;
+      const bottomPad = isNarrow ? 152 : 42;
+      const sidePad = isNarrow ? 34 : 44;
+
       SECTORS.forEach((sec) => {
         const el = labelRefs.current[sec.id];
         if (!el) return;
@@ -1180,7 +1207,7 @@ export function PlanetHomeView({
         const inFront = _vec3A.z > -1 && _vec3A.z < 1;
         const sx = (_vec3A.x * 0.5 + 0.5) * canvasW;
         const sy = (-_vec3A.y * 0.5 + 0.5) * canvasH;
-        const inBounds = sx > 44 && sx < canvasW - 44 && sy > 70 && sy < canvasH - 42;
+        const inBounds = sx > sidePad && sx < canvasW - sidePad && sy > topPad && sy < canvasH - bottomPad;
 
         if (!inFront || !inBounds) {
           el.style.opacity = '0';
@@ -1190,7 +1217,7 @@ export function PlanetHomeView({
 
         const dimmed = Boolean(curFocused && curFocused !== sec.id);
         el.style.transform = `translate3d(${sx.toFixed(1)}px, ${sy.toFixed(1)}px, 0) translate(-50%, -100%)`;
-        el.style.opacity = dimmed ? '0.32' : '1';
+        el.style.opacity = dimmed ? '0.28' : '1';
         el.style.pointerEvents = 'auto';
       });
 
@@ -1248,7 +1275,7 @@ export function PlanetHomeView({
   };
 
   return (
-    <div className="relative h-[calc(100vh-68px)] min-h-[600px] w-full overflow-hidden select-none">
+    <div className="relative h-[calc(100dvh-56px)] sm:h-[calc(100dvh-68px)] min-h-[520px] w-full overflow-hidden select-none">
       {/* ================= FULL-VIEWPORT THREE.JS WEBGL 3D SPACE CANVAS ================= */}
       <div
         ref={canvasMountRef}
@@ -1282,7 +1309,7 @@ export function PlanetHomeView({
                 opacity: 0,
                 borderColor: isFocused || isHovered ? meta.color : undefined,
               }}
-              className={`webgl-hud-surface pointer-events-auto absolute top-0 left-0 flex items-center gap-1.5 rounded-xl px-2.5 py-1 text-[11px] font-bold shadow-lg transition-[border-color,box-shadow] duration-150 ${
+              className={`webgl-hud-surface pointer-events-auto absolute top-0 left-0 flex items-center gap-1 rounded-xl px-2 py-1 text-[10px] font-bold shadow-lg transition-[border-color,box-shadow] duration-150 sm:gap-1.5 sm:px-2.5 sm:text-[11px] ${
                 isFocused
                   ? 'ring-2 ring-cyan-400/80'
                   : isRecommended
@@ -1294,10 +1321,12 @@ export function PlanetHomeView({
                 className="inline-block h-2 w-2 shrink-0 rounded-full"
                 style={{ backgroundColor: meta.color }}
               />
-              <span className="font-mono text-[10px] opacity-80">{sec.code}</span>
+              <span className="font-mono text-[9px] opacity-80 sm:text-[10px]">{sec.code}</span>
               <span className="whitespace-nowrap">{sec.shortTitle}</span>
               <span
-                className={`inline-flex items-center gap-0.5 rounded-md px-1 py-0.5 font-mono text-[10px] ${
+                className={`items-center gap-0.5 rounded-md px-1 py-0.5 font-mono text-[10px] ${
+                  isFocused || isRecommended ? 'inline-flex' : 'hidden sm:inline-flex'
+                } ${
                   isCompleted
                     ? 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300'
                     : 'bg-amber-500/20 text-amber-700 dark:text-amber-300'
@@ -1312,24 +1341,24 @@ export function PlanetHomeView({
       </div>
 
       {/* ================= TOP-LEFT COMPACT ACHIEVEMENT WALL HUD (NO BACKDROP BLUR) ================= */}
-      <div className="pointer-events-none absolute top-3 left-3 z-20 flex max-w-[330px] flex-col gap-2 sm:left-4">
+      <div className="pointer-events-none absolute top-2 left-2.5 z-20 flex max-w-[calc(100%-175px)] flex-col gap-2 sm:top-3 sm:left-4 sm:max-w-[330px]">
         <div className="pointer-events-auto">
           <AchievementWallBar profile={profile} theme={theme} variant="corner" noBlur />
         </div>
-        <div className="webgl-hud-surface pointer-events-auto hidden items-center gap-2 rounded-xl px-3 py-1.5 text-[11px] font-semibold text-slate-700 sm:inline-flex dark:text-slate-200">
+        <div className="webgl-hud-surface pointer-events-auto hidden items-center gap-2 rounded-xl px-3 py-1.5 text-[11px] font-semibold text-slate-700 md:inline-flex dark:text-slate-200">
           <Compass className="h-3.5 w-3.5 text-sky-600 dark:text-cyan-300" aria-hidden="true" />
           <span>拖曳 360° 環視宇宙 · 滾輪縮放 · 點擊星球飛近登陸</span>
         </div>
       </div>
 
       {/* ================= TOP-RIGHT COMPACT SYSTEM CONTROLS HUD (NO BACKDROP BLUR) ================= */}
-      <div className="pointer-events-none absolute top-3 right-3 z-20 flex flex-col items-end gap-2 sm:right-4">
-        <div className="webgl-hud-surface pointer-events-auto flex flex-wrap items-center justify-end gap-1.5 rounded-2xl p-1.5">
+      <div className="pointer-events-none absolute top-2 right-2.5 z-20 flex flex-col items-end gap-2 sm:top-3 sm:right-4">
+        <div className="webgl-hud-surface pointer-events-auto flex flex-wrap items-center justify-end gap-1 rounded-2xl p-1 sm:gap-1.5 sm:p-1.5">
           <button
             type="button"
             onClick={() => onToggleTheme(getNextThemeMode(theme))}
             title={`點擊切換光源：${themeMeta.label}`}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-slate-900/5 px-2.5 py-1.5 text-[11px] font-bold text-slate-800 transition-colors hover:bg-sky-500/15 dark:bg-white/10 dark:text-white dark:hover:bg-cyan-500/20"
+            className="inline-flex min-h-[36px] items-center gap-1 rounded-xl bg-slate-900/5 px-2 py-1.5 text-[11px] font-bold text-slate-800 transition-colors hover:bg-sky-500/15 sm:min-h-0 sm:gap-1.5 sm:px-2.5 dark:bg-white/10 dark:text-white dark:hover:bg-cyan-500/20"
           >
             {isDark ? (
               <Moon className="h-3.5 w-3.5 text-cyan-300" aria-hidden="true" />
@@ -1344,19 +1373,20 @@ export function PlanetHomeView({
           <button
             type="button"
             onClick={() => onChangeMode(mode === 'student' ? 'projector' : 'student')}
-            className={`inline-flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-[11px] font-bold transition-colors ${
+            className={`inline-flex min-h-[36px] items-center gap-1 rounded-xl px-2 py-1.5 text-[11px] font-bold transition-colors sm:min-h-0 sm:px-2.5 ${
               mode === 'projector'
                 ? 'bg-sky-600 text-white'
                 : 'bg-slate-900/5 text-slate-800 hover:bg-sky-500/15 dark:bg-white/10 dark:text-slate-100'
             }`}
           >
-            <span>{mode === 'projector' ? '教室投影' : '學生自學'}</span>
+            <span className="sm:hidden">{mode === 'projector' ? '投影' : '自學'}</span>
+            <span className="hidden sm:inline">{mode === 'projector' ? '教室投影' : '學生自學'}</span>
           </button>
 
           <button
             type="button"
             onClick={onOpenBattle}
-            className="inline-flex items-center gap-1 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 px-2.5 py-1.5 text-[11px] font-extrabold text-white shadow-sm transition-transform hover:scale-105"
+            className="hidden items-center gap-1 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 px-2.5 py-1.5 text-[11px] font-extrabold text-white shadow-sm transition-transform hover:scale-105 md:inline-flex"
           >
             <Swords className="h-3.5 w-3.5" aria-hidden="true" />
             <span className="hidden md:inline">多人搶答</span>
@@ -1365,7 +1395,7 @@ export function PlanetHomeView({
           <button
             type="button"
             onClick={onOpenWrongModal}
-            className="inline-flex items-center gap-1 rounded-xl bg-slate-900/5 px-2.5 py-1.5 text-[11px] font-bold text-slate-800 hover:bg-rose-500/15 dark:bg-white/10 dark:text-slate-100"
+            className="hidden items-center gap-1 rounded-xl bg-slate-900/5 px-2.5 py-1.5 text-[11px] font-bold text-slate-800 hover:bg-rose-500/15 md:inline-flex dark:bg-white/10 dark:text-slate-100"
           >
             <BookMarked className="h-3.5 w-3.5 text-rose-500 dark:text-rose-400" aria-hidden="true" />
             <span className="font-mono">{wrongCount}</span>
@@ -1375,7 +1405,7 @@ export function PlanetHomeView({
             type="button"
             onClick={onOpenProgressModal}
             aria-label="題庫與雲端管理"
-            className="inline-flex items-center gap-1 rounded-xl bg-slate-900/5 px-2.5 py-1.5 text-[11px] font-bold text-slate-800 hover:bg-sky-500/15 dark:bg-white/10 dark:text-slate-100"
+            className="hidden items-center gap-1 rounded-xl bg-slate-900/5 px-2.5 py-1.5 text-[11px] font-bold text-slate-800 hover:bg-sky-500/15 md:inline-flex dark:bg-white/10 dark:text-slate-100"
           >
             <SlidersHorizontal className="h-3.5 w-3.5 text-sky-600 dark:text-cyan-300" aria-hidden="true" />
             <span className="hidden xl:inline">題庫雲端</span>
@@ -1386,8 +1416,10 @@ export function PlanetHomeView({
       {/* ================= FOCUSED PLANET MISSION LAUNCH OVERLAY ================= */}
       {focusedSectorDef && focusedSectorStats && (
         <div
-          className={`pointer-events-auto fixed left-1/2 z-30 w-[92%] max-w-[440px] -translate-x-1/2 transition-all ${
-            dockOpen ? 'bottom-[116px]' : 'bottom-12'
+          className={`pointer-events-auto fixed left-1/2 z-30 w-[94%] max-w-[440px] -translate-x-1/2 transition-all ${
+            dockOpen
+              ? 'bottom-[calc(176px+env(safe-area-inset-bottom))] md:bottom-[116px]'
+              : 'bottom-[calc(132px+env(safe-area-inset-bottom))] md:bottom-12'
           }`}
         >
           <div className="webgl-hud-surface rounded-2xl p-4 shadow-2xl">
@@ -1457,7 +1489,7 @@ export function PlanetHomeView({
       )}
 
       {/* ================= COLLAPSIBLE BOTTOM STAR-SYSTEM CONTROL DOCK ================= */}
-      <div className="pointer-events-none fixed bottom-2.5 left-1/2 z-20 flex w-[96%] max-w-[1040px] -translate-x-1/2 flex-col items-center">
+      <div className="pointer-events-none fixed bottom-[calc(64px+env(safe-area-inset-bottom))] left-1/2 z-20 flex w-[96%] max-w-[1040px] -translate-x-1/2 flex-col items-center md:bottom-2.5">
         <button
           type="button"
           onClick={() => setDockOpen((v) => !v)}
@@ -1467,116 +1499,125 @@ export function PlanetHomeView({
           {dockOpen ? (
             <>
               <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
-              <span>收合星際導航列 (H)</span>
+              <span className="md:hidden">收合遙測儀表板</span>
+              <span className="hidden md:inline">收合星際導航列 (H)</span>
             </>
           ) : (
             <>
               <ChevronUp className="h-3.5 w-3.5" aria-hidden="true" />
-              <span>展開星際導航列 · 8 大探索星球 (H)</span>
+              <span className="md:hidden">展開星系遙測 · 暫停公轉</span>
+              <span className="hidden md:inline">展開星際導航列 · 8 大探索星球 (H)</span>
             </>
           )}
         </button>
 
-        {dockOpen && (
-          <div className="webgl-hud-surface pointer-events-auto flex w-full flex-col gap-2 rounded-2xl px-3 py-2.5 shadow-2xl lg:flex-row lg:items-center lg:justify-between">
-            {/* Left Telemetry + Orbit Controls */}
-            <div className="flex flex-wrap items-center justify-between gap-2 lg:justify-start">
-              <div className="flex items-center gap-2.5 text-xs font-bold">
-                <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-300">
-                  <Star className="h-3.5 w-3.5 fill-current" aria-hidden="true" />
-                  <span className="font-mono">
-                    {totalEarnedStars}/{totalSystemStars}
-                  </span>
+        {/* On mobile when collapsed, still keep the 8-planet swipeable quick-fly strip cleanly docked above MobileBottomNav */}
+        <div className="webgl-hud-surface pointer-events-auto flex w-full flex-col gap-2 rounded-2xl px-2.5 py-2 shadow-2xl md:px-3 md:py-2.5 lg:flex-row lg:items-center lg:justify-between">
+          {/* Left Telemetry + Orbit Controls */}
+          <div
+            className={`${
+              dockOpen ? 'flex' : 'hidden'
+            } flex-wrap items-center justify-between gap-2 lg:justify-start`}
+          >
+            <div className="flex items-center gap-2.5 text-xs font-bold">
+              <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-300">
+                <Star className="h-3.5 w-3.5 fill-current" aria-hidden="true" />
+                <span className="font-mono">
+                  {totalEarnedStars}/{totalSystemStars}
                 </span>
-                <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-300">
-                  <Flag className="h-3.5 w-3.5" aria-hidden="true" />
-                  <span className="font-mono">{completedPlanets}/8</span>
-                </span>
-                <span className="inline-flex items-center gap-1 text-sky-700 dark:text-cyan-300">
-                  <Trophy className="h-3.5 w-3.5" aria-hidden="true" />
-                  <span className="font-mono">{profile.totalScore} 分</span>
-                </span>
-              </div>
-
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => setOrbitPaused((p) => !p)}
-                  className="inline-flex items-center gap-1 rounded-lg bg-slate-900/5 px-2.5 py-1 text-[11px] font-bold text-slate-800 hover:bg-sky-500/15 dark:bg-white/10 dark:text-slate-100"
-                >
-                  {orbitPaused ? (
-                    <>
-                      <Play className="h-3 w-3 text-emerald-500" aria-hidden="true" />
-                      <span>繼續公轉</span>
-                    </>
-                  ) : (
-                    <>
-                      <Pause className="h-3 w-3 text-sky-500 dark:text-cyan-300" aria-hidden="true" />
-                      <span>暫停公轉</span>
-                    </>
-                  )}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleResetOverview}
-                  className="inline-flex items-center gap-1 rounded-lg bg-slate-900/5 px-2.5 py-1 text-[11px] font-bold text-slate-800 hover:bg-sky-500/15 dark:bg-white/10 dark:text-slate-100"
-                >
-                  <RotateCcw className="h-3 w-3" aria-hidden="true" />
-                  <span>全景</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={onSwitchToGrid}
-                  className="inline-flex items-center gap-1 rounded-lg bg-slate-900/5 px-2.5 py-1 text-[11px] font-bold text-slate-800 hover:bg-sky-500/15 dark:bg-white/10 dark:text-slate-100"
-                >
-                  <LayoutGrid className="h-3 w-3" aria-hidden="true" />
-                  <span>航圖</span>
-                </button>
-              </div>
+              </span>
+              <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-300">
+                <Flag className="h-3.5 w-3.5" aria-hidden="true" />
+                <span className="font-mono">{completedPlanets}/8</span>
+              </span>
+              <span className="inline-flex items-center gap-1 text-sky-700 dark:text-cyan-300">
+                <Trophy className="h-3.5 w-3.5" aria-hidden="true" />
+                <span className="font-mono">{profile.totalScore} 分</span>
+              </span>
             </div>
 
-            {/* Right Quick-Fly 8 Planets Strip */}
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 lg:pb-0">
-              {SECTORS.map((sec) => {
-                const meta = PLANET_META[sec.id];
-                const stats = getSectorStarStats(sec, profile.sectors[sec.id]);
-                const isFocused = focusedSector === sec.id;
-                const isDone = stats.earned === stats.total;
-                const isNext = nextRecommendedSector === sec.id && !focusedSector;
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setOrbitPaused((p) => !p)}
+                className="inline-flex min-h-[36px] items-center gap-1 rounded-lg bg-slate-900/5 px-2.5 py-1 text-[11px] font-bold text-slate-800 hover:bg-sky-500/15 sm:min-h-0 dark:bg-white/10 dark:text-slate-100"
+              >
+                {orbitPaused ? (
+                  <>
+                    <Play className="h-3 w-3 text-emerald-500" aria-hidden="true" />
+                    <span>繼續公轉</span>
+                  </>
+                ) : (
+                  <>
+                    <Pause className="h-3 w-3 text-sky-500 dark:text-cyan-300" aria-hidden="true" />
+                    <span>暫停公轉</span>
+                  </>
+                )}
+              </button>
 
-                return (
-                  <button
-                    key={sec.id}
-                    type="button"
-                    data-sfx="custom"
-                    onMouseEnter={() => setHoveredSector(sec.id)}
-                    onMouseLeave={() => setHoveredSector((p) => (p === sec.id ? null : p))}
-                    onClick={() => handleDockPlanetClick(sec.id)}
-                    className={`inline-flex shrink-0 items-center gap-1.5 rounded-xl border px-2.5 py-1.5 text-[11px] font-bold transition-all ${
-                      isFocused
-                        ? 'border-cyan-400 bg-sky-500/20 text-sky-900 shadow-sm dark:text-white'
-                        : isNext
-                        ? 'border-amber-400/70 bg-amber-500/10 text-slate-900 dark:text-white'
-                        : 'border-slate-300/60 bg-white/60 text-slate-800 hover:border-sky-400 dark:border-slate-700/70 dark:bg-slate-900/65 dark:text-slate-200'
-                    }`}
-                  >
-                    <span
-                      className="h-2 w-2 rounded-full"
-                      style={{ backgroundColor: meta.color }}
-                    />
-                    <span className="font-mono text-[10px] opacity-75">{sec.code}</span>
-                    <span>{sec.shortTitle}</span>
-                    {isDone && (
-                      <Star className="h-3 w-3 fill-emerald-500 text-emerald-500" aria-hidden="true" />
-                    )}
-                  </button>
-                );
-              })}
+              <button
+                type="button"
+                onClick={handleResetOverview}
+                className="inline-flex min-h-[36px] items-center gap-1 rounded-lg bg-slate-900/5 px-2.5 py-1 text-[11px] font-bold text-slate-800 hover:bg-sky-500/15 sm:min-h-0 dark:bg-white/10 dark:text-slate-100"
+              >
+                <RotateCcw className="h-3 w-3" aria-hidden="true" />
+                <span>全景</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={onSwitchToGrid}
+                className="hidden items-center gap-1 rounded-lg bg-slate-900/5 px-2.5 py-1 text-[11px] font-bold text-slate-800 hover:bg-sky-500/15 md:inline-flex dark:bg-white/10 dark:text-slate-100"
+              >
+                <LayoutGrid className="h-3 w-3" aria-hidden="true" />
+                <span>航圖</span>
+              </button>
             </div>
           </div>
-        )}
+
+          {/* Right Quick-Fly 8 Planets Strip (always swipeable on mobile even when telemetry is collapsed) */}
+          <div
+            className={`${
+              dockOpen ? 'flex' : 'flex md:hidden'
+            } no-scrollbar items-center gap-1.5 overflow-x-auto pb-0.5 lg:pb-0`}
+          >
+            {SECTORS.map((sec) => {
+              const meta = PLANET_META[sec.id];
+              const stats = getSectorStarStats(sec, profile.sectors[sec.id]);
+              const isFocused = focusedSector === sec.id;
+              const isDone = stats.earned === stats.total;
+              const isNext = nextRecommendedSector === sec.id && !focusedSector;
+
+              return (
+                <button
+                  key={sec.id}
+                  type="button"
+                  data-sfx="custom"
+                  onMouseEnter={() => setHoveredSector(sec.id)}
+                  onMouseLeave={() => setHoveredSector((p) => (p === sec.id ? null : p))}
+                  onClick={() => handleDockPlanetClick(sec.id)}
+                  className={`inline-flex min-h-[38px] shrink-0 items-center gap-1.5 rounded-xl border px-2.5 py-1.5 text-[11px] font-bold transition-all sm:min-h-0 ${
+                    isFocused
+                      ? 'border-cyan-400 bg-sky-500/20 text-sky-900 shadow-sm dark:text-white'
+                      : isNext
+                      ? 'border-amber-400/70 bg-amber-500/10 text-slate-900 dark:text-white'
+                      : 'border-slate-300/60 bg-white/60 text-slate-800 hover:border-sky-400 dark:border-slate-700/70 dark:bg-slate-900/65 dark:text-slate-200'
+                  }`}
+                >
+                  <span
+                    className="h-2 w-2 rounded-full"
+                    style={{ backgroundColor: meta.color }}
+                  />
+                  <span className="font-mono text-[10px] opacity-75">{sec.code}</span>
+                  <span>{sec.shortTitle}</span>
+                  {isDone && (
+                    <Star className="h-3 w-3 fill-emerald-500 text-emerald-500" aria-hidden="true" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
       </div>
     </div>
   );

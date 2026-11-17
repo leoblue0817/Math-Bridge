@@ -7,6 +7,7 @@ interface SpaceFairyGuideProps {
   theme: ThemeMode;
   mode: AppMode;
   isPlanetHome?: boolean;
+  hasMobileBottomNav?: boolean;
   activeSector: SectorData | null;
   activeTab: TerminalTab;
   activeSubLesson: SubLesson | null;
@@ -53,6 +54,7 @@ export function SpaceFairyGuide({
   theme,
   mode,
   isPlanetHome = false,
+  hasMobileBottomNav = false,
   activeSector,
   activeTab,
   activeSubLesson,
@@ -60,7 +62,11 @@ export function SpaceFairyGuide({
   totalEarnedStars,
   totalSystemStars,
 }: SpaceFairyGuideProps) {
-  const [isOpen, setIsOpen] = useState(!isPlanetHome);
+  const [isOpen, setIsOpen] = useState(() => {
+    if (isPlanetHome) return false;
+    if (typeof window !== 'undefined' && window.innerWidth < 768) return false;
+    return true;
+  });
   const [tipSeed, setTipSeed] = useState(0);
   const isDark = isDarkTheme(theme);
 
@@ -106,8 +112,10 @@ export function SpaceFairyGuide({
 
   const currentTip = tips[tipSeed % tips.length] ?? tips[0];
   const positionClass = isPlanetHome
-    ? 'fixed right-4 bottom-24 z-30 sm:bottom-[104px]'
-    : 'fixed right-5 bottom-5 z-40';
+    ? 'fixed right-2.5 bottom-[calc(146px+env(safe-area-inset-bottom))] z-30 md:right-4 md:bottom-[108px]'
+    : hasMobileBottomNav
+    ? 'fixed right-3 bottom-[calc(70px+env(safe-area-inset-bottom))] z-30 md:right-5 md:bottom-5'
+    : 'fixed right-3 bottom-4 z-40 md:right-5 md:bottom-5';
   const surfaceClass = isPlanetHome ? 'webgl-hud-surface' : 'glass-hud-corner';
 
   if (!isOpen) {
@@ -115,14 +123,15 @@ export function SpaceFairyGuide({
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className={`${positionClass} ${surfaceClass} inline-flex items-center gap-2 rounded-2xl px-3.5 py-2 text-xs font-bold text-slate-900 shadow-lg transition-transform hover:scale-105 dark:text-white`}
+        className={`${positionClass} ${surfaceClass} inline-flex min-h-[44px] items-center gap-1.5 rounded-2xl px-2.5 py-1.5 text-xs font-bold text-slate-900 shadow-lg transition-transform hover:scale-105 md:gap-2 md:px-3.5 md:py-2 dark:text-white`}
         aria-label="展開Blue老師小精靈提示"
       >
         <FairySprite isDark={isDark} />
-        <div className="text-left">
+        <div className="hidden text-left sm:block">
           <div className="text-[11px] font-semibold text-sky-700 dark:text-cyan-300">課堂巡遊小精靈</div>
           <div>Blue老師小叮嚀</div>
         </div>
+        <span className="text-[11px] font-extrabold sm:hidden">小叮嚀</span>
       </button>
     );
   }
@@ -150,7 +159,7 @@ export function SpaceFairyGuide({
           type="button"
           onClick={() => setIsOpen(false)}
           aria-label="收合小精靈提示氣泡"
-          className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-white"
+          className="flex h-10 w-10 items-center justify-center rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-700 sm:h-7 sm:w-7 sm:rounded-lg dark:hover:bg-slate-800 dark:hover:text-white"
         >
           <X className="h-4 w-4" aria-hidden="true" />
         </button>

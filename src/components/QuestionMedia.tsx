@@ -52,17 +52,17 @@ export function QuestionMedia({ diagramId, imageUrl, className = '' }: QuestionM
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="relative max-h-[90vh] max-w-4xl overflow-auto rounded-2xl border border-slate-700 bg-white p-4 shadow-2xl dark:bg-slate-900"
+            className="relative max-h-[88dvh] max-w-4xl overflow-auto rounded-2xl border border-slate-700 bg-white p-3.5 shadow-2xl sm:p-4 dark:bg-slate-900"
           >
             <button
               type="button"
               onClick={() => setZoomed(false)}
               aria-label="關閉圖片放大預覽"
-              className="absolute top-3 right-3 flex h-8 w-8 items-center justify-center rounded-full bg-slate-900/85 text-white hover:bg-slate-800"
+              className="absolute top-3 right-3 flex h-11 w-11 items-center justify-center rounded-full bg-slate-900/85 text-white hover:bg-slate-800 sm:h-8 sm:w-8"
             >
               <X className="h-4 w-4" aria-hidden="true" />
             </button>
-            <img src={imageUrl} alt="題目附圖放大" className="max-h-[82vh] w-auto rounded-xl object-contain" />
+            <img src={imageUrl} alt="題目附圖放大" className="max-h-[78dvh] w-auto rounded-xl object-contain" />
           </div>
         </div>
       )}

@@ -16,6 +16,16 @@
     text-wrap: balance;
   }
 
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  label[for],
+  label:has(> input[type="file"]),
+  a,
+  select,
+  input {
+    touch-action: manipulation;
+  }
+
   /* Global physical tactile button feedback */
   button:not(:disabled),
   [role="button"]:not([aria-disabled="true"]),
@@ -29,11 +39,14 @@
       color 140ms ease,
       filter 120ms ease;
     cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
   }
 
-  button:not(:disabled):hover,
-  [role="button"]:not([aria-disabled="true"]):hover {
-    transform: translateY(-1px);
+  @media (hover: hover) and (pointer: fine) {
+    button:not(:disabled):hover,
+    [role="button"]:not([aria-disabled="true"]):hover {
+      transform: translateY(-1px);
+    }
   }
 
   button:not(:disabled):active,
@@ -46,6 +59,23 @@
   button:disabled {
     cursor: not-allowed;
   }
+}
+
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }
 
 .tabular-nums {
@@ -177,8 +207,10 @@
     inset 0 1px 0 rgba(224, 242, 254, 0.14);
 }
 
-.iso-node-card:hover {
-  transform: translateY(-4px) scale(1.018);
+@media (hover: hover) and (pointer: fine) {
+  .iso-node-card:hover {
+    transform: translateY(-4px) scale(1.018);
+  }
 }
 
 /* Esports Metallic High-Gloss Progress Bar */

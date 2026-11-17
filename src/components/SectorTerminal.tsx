@@ -62,7 +62,7 @@ function PlanetViewportWindow({ sectorId }: { sectorId: SectorId }) {
 
   return (
     <div
-      className={`relative flex h-24 w-28 shrink-0 items-center justify-center overflow-hidden rounded-2xl border ${
+      className={`relative hidden h-24 w-28 shrink-0 items-center justify-center overflow-hidden rounded-2xl border sm:flex ${
         isDark
           ? 'border-slate-700/80 bg-[#040814]'
           : 'border-sky-200 bg-gradient-to-b from-sky-500 to-blue-700'
@@ -243,10 +243,10 @@ export function SectorTerminal({
   };
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6 px-6 pt-6">
+    <div className="mx-auto max-w-6xl space-y-4 px-3 pt-3 sm:space-y-6 sm:px-6 sm:pt-6">
       {/* Planet Cockpit Viewport Banner */}
-      <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white/95 p-5 shadow-sm md:p-6 dark:border-slate-800 dark:bg-[#0D1424]/95 dark:shadow-none">
-        <div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-center">
+      <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm sm:p-5 md:p-6 dark:border-slate-800 dark:bg-[#0D1424]/95 dark:shadow-none">
+        <div className="flex flex-col justify-between gap-4 sm:gap-5 lg:flex-row lg:items-center">
           <div className="flex items-center gap-4">
             <PlanetViewportWindow sectorId={sector.id} />
 
@@ -480,7 +480,7 @@ export function SectorTerminal({
       </div>
 
       {/* Prev / Next Sector Quick Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-4 border-t border-slate-200 pt-5 text-sm dark:border-slate-800">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 pt-5 text-sm dark:border-slate-800">
         {prevSector ? (
           <button
             type="button"
@@ -488,7 +488,7 @@ export function SectorTerminal({
               soundEngine.playWarp();
               onSelectSector(prevSector.id);
             }}
-            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-slate-700 hover:border-sky-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-cyan-400"
+            className="inline-flex min-h-[44px] items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:border-sky-400 sm:text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-cyan-400"
           >
             <ChevronLeft className="h-4 w-4" aria-hidden="true" />
             <span>上一星球：{prevSector.shortTitle}</span>
@@ -504,7 +504,7 @@ export function SectorTerminal({
               soundEngine.playWarp();
               onSelectSector(nextSector.id);
             }}
-            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-slate-700 hover:border-sky-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-cyan-400"
+            className="inline-flex min-h-[44px] items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:border-sky-400 sm:text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-cyan-400"
           >
             <span>下一星球：{nextSector.shortTitle}</span>
             <ChevronRight className="h-4 w-4" aria-hidden="true" />
