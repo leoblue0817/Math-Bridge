@@ -377,7 +377,7 @@ export function SymmetryOrigamiLab({ isCompleted, onComplete }: SymmetryOrigamiL
       <div className="flex flex-col justify-between gap-4 border-b border-slate-200 pb-4 sm:pb-5 lg:flex-row lg:items-end dark:border-slate-800">
         <div>
           <p className="text-xs font-semibold text-sky-700 dark:text-cyan-400">
-            創意課程 · 主題 3 面積綜合與線對稱
+            創意課程 · 主題 3 黃金割補秘境
           </p>
           <h3 className="mt-1 text-lg font-bold text-slate-900 sm:text-xl dark:text-white">
             摺摺稱奇－線對稱（黃／黑／灰 16×16 摺紙）

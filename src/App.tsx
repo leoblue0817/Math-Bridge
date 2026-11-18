@@ -639,27 +639,6 @@ export default function App() {
     }
   };
 
-  const handleCompleteWarmup = (sectorId: SectorId) => {
-    const sectorDef = mergedSectors.find((s) => s.id === sectorId);
-    const wasDone = activeProfile.sectors[sectorId].warmup;
-    updateActiveProfile((prof) => {
-      const target = prof.sectors[sectorId];
-      if (target.warmup) return prof;
-      return {
-        ...prof,
-        totalScore: prof.totalScore + 25,
-        sectors: { ...prof.sectors, [sectorId]: { ...target, warmup: true } },
-      };
-    });
-    if (!wasDone) {
-      triggerCelebration(
-        '熱身關卡過關！',
-        `${sectorDef?.shortTitle ?? ''} 點亮熱身星星`,
-        '+25 分'
-      );
-    }
-  };
-
   const handleAnswerSubQuiz = (
     sectorId: SectorId,
     subId: string,
@@ -770,8 +749,8 @@ export default function App() {
 
     if (willCelebrateSub) {
       triggerCelebration(
-        `小節 ${subDef.code} 奪星成功！`,
-        `${subDef.title} 微關卡已通關`,
+        `實戰演練 ${subDef.code} 奪星成功！`,
+        `${subDef.title} 4 題段已通關`,
         '+30 分'
       );
     }
@@ -1099,7 +1078,6 @@ export default function App() {
                   onSelectSector={selectSector}
                   onChangeMode={handleChangeMode}
                   onCompleteSlides={handleCompleteSlides}
-                  onCompleteWarmup={handleCompleteWarmup}
                   onAnswerSubQuiz={handleAnswerSubQuiz}
                   onResetSubQuiz={handleResetSubQuiz}
                   onCompleteLab={handleCompleteLab}

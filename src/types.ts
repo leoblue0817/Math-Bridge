@@ -49,7 +49,7 @@ export function getNextThemeMode(current: ThemeMode): ThemeMode {
 
 export type HomeViewMode = 'planet' | 'grid' | 'battle';
 
-export type TerminalTab = 'slides' | 'warmup' | 'micro' | 'lab';
+export type TerminalTab = 'slides' | 'drill' | 'lab';
 
 export interface CustomQuestionRecord {
   id: string;

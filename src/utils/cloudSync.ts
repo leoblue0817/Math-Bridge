@@ -4,9 +4,11 @@ import {
   doc,
   getDoc,
   getDocs,
+  query,
   serverTimestamp,
   setDoc,
   updateDoc,
+  where,
   writeBatch,
 } from 'firebase/firestore';
 import { OperationType, db, handleFirestoreError } from '../firebase';
@@ -105,7 +107,9 @@ export async function saveUserCloudData(
 export async function fetchCloudCustomQuestions(uid: string): Promise<CustomQuestionRecord[]> {
   const path = `userData/${uid}/customQuestions`;
   try {
-    const snap = await getDocs(collection(db, 'userData', uid, 'customQuestions'));
+    const snap = await getDocs(
+      query(collection(db, 'userData', uid, 'customQuestions'), where('uid', '==', uid))
+    );
     return snap.docs.map((d) => {
       const data = d.data();
       return {

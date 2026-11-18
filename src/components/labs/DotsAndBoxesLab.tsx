@@ -212,7 +212,7 @@ export function DotsAndBoxesLab({ isCompleted, onComplete }: DotsAndBoxesLabProp
       <div className="flex flex-col justify-between gap-4 border-b border-slate-200 pb-4 sm:pb-5 lg:flex-row lg:items-end dark:border-slate-800">
         <div>
           <p className="text-xs font-semibold text-sky-700 dark:text-cyan-400">
-            創意課程 · 主題 1 奇偶性質對戰
+            創意課程 · 主題 1 費波那契星環
           </p>
           <h3 className="mt-1 text-lg font-bold text-slate-900 sm:text-xl dark:text-white">
             點格棋－圍方格（點格對決）

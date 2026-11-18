@@ -474,7 +474,7 @@ export function ProgressManagerModal({
                   <div>
                     <div className="text-xs font-bold">清除單一主題島</div>
                     <div className="text-[11px] text-slate-500 dark:text-slate-400">
-                      簡報、熱身、小節微關卡、創意與錯題紀錄都會歸零
+                      簡報、實戰演練、創意對戰與錯題紀錄都會歸零
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -719,7 +719,7 @@ export function ProgressManagerModal({
 
                 <div>
                   <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400">
-                    匯入目標小節微關卡
+                    匯入目標實戰演練分段
                   </label>
                   <select
                     value={targetSubId}

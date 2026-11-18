@@ -9,94 +9,60 @@ interface TeachInteractiveViewProps {
   onGoNextTab: () => void;
 }
 
+const FIB_SEQ = [1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144];
+
 export function SectorMiniExplorer({ sectorId }: { sectorId: SectorId }) {
+  // s1: 數列規律 (1/7 密碼轉盤 + 費氏兔子)
+  const [fracNum, setFracNum] = useState(1);
+  const [fibMonth, setFibMonth] = useState(6);
+
+  // s2: 奇偶性質 (奇偶驗證)
   const [parA, setParA] = useState(17);
   const [parB, setParB] = useState(24);
-  const [fracNum, setFracNum] = useState(1);
+
+  // s3: 面積綜合 (圓切拼長方形)
   const [slices, setSlices] = useState(16);
+
+  // s4: 加法與乘法原理 (n 邊形對角線)
   const [sides, setSides] = useState(5);
-  const [crStep, setCrStep] = useState<0 | 1 | 2>(0);
+
+  // s5: 運算規則 (正數去括號與分配律天平)
+  const [ruleCase, setRuleCase] = useState<0 | 1 | 2>(0);
+
+  // s6: 數形規律 (正方形與三角形點陣)
   const [figN, setFigN] = useState(5);
+
+  // s7: 四則混合計算 (2^n 乘方與個位循環)
   const [powExp, setPowExp] = useState(6);
+
+  // s8: 三視圖 (左右視圖鏡像)
   const [mirrorHeight, setMirrorHeight] = useState<[number, number, number]>([3, 1, 2]);
 
   if (sectorId === 's1') {
-    const sum = parA + parB;
-    const prod = parA * parB;
-    const labelOf = (v: number) => (v % 2 === 0 ? '偶數' : '奇數');
-    return (
-      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5 dark:border-slate-800 dark:bg-[#080D1A] dark:shadow-none">
-        <div className="text-xs font-semibold text-sky-700 dark:text-cyan-400">互動實驗器 · 奇偶運算即時驗證</div>
-        <h3 className="mt-1 text-base font-bold text-slate-900 dark:text-white">
-          調整兩個整數（含 0），觀察加減與乘積的奇偶性
-        </h3>
-        <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-          <div className="flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-900/80">
-            <label htmlFor="par-a" className="text-xs text-slate-600 dark:text-slate-300">甲數：</label>
-            <input
-              id="par-a"
-              type="number"
-              value={parA}
-              onChange={(e) => setParA(parseInt(e.target.value || '0', 10))}
-              className="w-24 rounded-lg border border-slate-300 bg-white px-3 py-1 font-mono text-sm text-slate-900 tabular-nums dark:border-slate-700 dark:bg-slate-950 dark:text-white"
-            />
-            <span className="font-mono text-xs font-semibold text-amber-700 dark:text-amber-300">
-              {labelOf(parA)}
-            </span>
-          </div>
-          <div className="flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-900/80">
-            <label htmlFor="par-b" className="text-xs text-slate-600 dark:text-slate-300">乙數：</label>
-            <input
-              id="par-b"
-              type="number"
-              value={parB}
-              onChange={(e) => setParB(parseInt(e.target.value || '0', 10))}
-              className="w-24 rounded-lg border border-slate-300 bg-white px-3 py-1 font-mono text-sm text-slate-900 tabular-nums dark:border-slate-700 dark:bg-slate-950 dark:text-white"
-            />
-            <span className="font-mono text-xs font-semibold text-sky-700 dark:text-cyan-300">
-              {labelOf(parB)}
-            </span>
-          </div>
-        </div>
-        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-200">
-            甲 ＋ 乙 ＝ <span className="font-mono font-bold text-slate-900 tabular-nums dark:text-white">{sum}</span>（
-            <span className="font-semibold text-emerald-700 dark:text-emerald-300">{labelOf(sum)}</span>）
-          </div>
-          <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-200">
-            甲 × 乙 ＝ <span className="font-mono font-bold text-slate-900 tabular-nums dark:text-white">{prod}</span>（
-            <span className="font-semibold text-emerald-700 dark:text-emerald-300">{labelOf(prod)}</span>）
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (sectorId === 's2') {
     const cycle = '142857';
     const startMap: Record<number, number> = { 1: 0, 2: 2, 3: 1, 4: 4, 5: 5, 6: 3 };
     const rot = cycle.slice(startMap[fracNum]) + cycle.slice(0, startMap[fracNum]);
     return (
-      <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-[#080D1A] dark:shadow-none">
-        <div className="flex flex-wrap items-center justify-between gap-4">
+      <div className="space-y-4 rounded-xl border border-sky-200 bg-sky-50/60 p-4 shadow-sm sm:p-5 dark:border-cyan-500/30 dark:bg-[#080D1A] dark:shadow-none">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <div className="text-xs font-semibold text-sky-700 dark:text-cyan-400">
-              Blue 秘笈互動儀 · 七分之幾旋轉密碼
+            <div className="text-xs font-bold text-sky-700 dark:text-cyan-400">
+              互動實驗儀 · 七分之幾循環密碼轉盤 ＆ 兔子繁殖月份
             </div>
-            <h3 className="mt-1 text-base font-bold text-slate-900 dark:text-white">
-              點擊分子，觀察「142857」循環節如何輪流當頭
+            <h3 className="mt-0.5 text-sm font-bold text-slate-900 sm:text-base dark:text-white">
+              點擊分子觀察「142857」輪流當頭，或滑動月份預測費氏兔子總對數
             </h3>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-1.5">
             {[1, 2, 3, 4, 5, 6].map((k) => (
               <button
                 key={k}
                 type="button"
                 onClick={() => setFracNum(k)}
-                className={`rounded-lg px-3 py-1.5 font-mono text-sm font-bold tabular-nums ${
+                className={`min-h-[36px] rounded-lg px-2.5 py-1 font-mono text-xs font-bold tabular-nums ${
                   fracNum === k
                     ? 'bg-sky-600 text-white dark:bg-cyan-500 dark:text-slate-950'
-                    : 'border border-slate-200 bg-slate-50 text-slate-700 hover:border-sky-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-cyan-400'
+                    : 'border border-slate-200 bg-white text-slate-700 hover:border-sky-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-cyan-400'
                 }`}
               >
                 {k}/7
@@ -104,8 +70,108 @@ export function SectorMiniExplorer({ sectorId }: { sectorId: SectorId }) {
             ))}
           </div>
         </div>
-        <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4 text-center font-mono text-xl font-bold text-amber-700 tabular-nums dark:border-slate-800 dark:bg-slate-900/80 dark:text-amber-300">
-          {fracNum}/7 ＝ 0.{rot}{rot}…
+
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <div className="flex flex-col justify-center rounded-lg border border-slate-200 bg-white p-3.5 text-center dark:border-slate-800 dark:bg-slate-900/80">
+            <div className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+              循環小數展開（週期 6 位）
+            </div>
+            <div className="mt-1 font-mono text-xl font-extrabold text-amber-600 tabular-nums dark:text-amber-300">
+              {fracNum}/7 ＝ 0.{rot}…
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-slate-200 bg-white p-3.5 dark:border-slate-800 dark:bg-slate-900/80">
+            <div className="flex items-center justify-between text-xs font-semibold text-slate-700 dark:text-slate-200">
+              <span>費波那契兔子：第 {fibMonth} 個月</span>
+              <span className="font-mono font-extrabold text-emerald-600 tabular-nums dark:text-emerald-300">
+                共 {FIB_SEQ[fibMonth - 1]} 對兔子
+              </span>
+            </div>
+            <input
+              type="range"
+              min={1}
+              max={12}
+              value={fibMonth}
+              onChange={(e) => setFibMonth(Number(e.target.value))}
+              aria-label="費波那契兔子月份"
+              className="mt-2 w-full accent-sky-600 dark:accent-cyan-400"
+            />
+            <div className="mt-1 flex flex-wrap gap-1 font-mono text-[11px] text-slate-500 tabular-nums dark:text-slate-400">
+              {FIB_SEQ.slice(0, fibMonth).map((val, i) => (
+                <span
+                  key={i}
+                  className={`rounded px-1.5 py-0.5 ${
+                    i === fibMonth - 1
+                      ? 'bg-emerald-100 font-bold text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-200'
+                      : 'bg-slate-100 dark:bg-slate-800'
+                  }`}
+                >
+                  {val}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (sectorId === 's2') {
+    const sum = parA + parB;
+    const prod = parA * parB;
+    const labelOf = (v: number) => (v % 2 === 0 ? '偶數' : '奇數');
+    return (
+      <div className="rounded-xl border border-purple-200 bg-purple-50/50 p-4 shadow-sm sm:p-5 dark:border-purple-500/30 dark:bg-[#080D1A] dark:shadow-none">
+        <div className="text-xs font-bold text-purple-700 dark:text-purple-300">
+          互動實驗儀 · 奇偶運算即時驗證（含 0 為偶數）
+        </div>
+        <h3 className="mt-0.5 text-sm font-bold text-slate-900 sm:text-base dark:text-white">
+          調整兩個整數，觀察「同偶異奇」相加與「遇偶即偶」相乘規律
+        </h3>
+        <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+          <div className="flex items-center gap-3 rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900/80">
+            <label htmlFor="par-a" className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+              甲數：
+            </label>
+            <input
+              id="par-a"
+              type="number"
+              value={parA}
+              onChange={(e) => setParA(parseInt(e.target.value || '0', 10))}
+              className="w-24 rounded-lg border border-slate-300 bg-slate-50 px-3 py-1 font-mono text-sm text-slate-900 tabular-nums dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+            />
+            <span className="font-mono text-xs font-bold text-amber-700 dark:text-amber-300">
+              {labelOf(parA)}
+            </span>
+          </div>
+          <div className="flex items-center gap-3 rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900/80">
+            <label htmlFor="par-b" className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+              乙數：
+            </label>
+            <input
+              id="par-b"
+              type="number"
+              value={parB}
+              onChange={(e) => setParB(parseInt(e.target.value || '0', 10))}
+              className="w-24 rounded-lg border border-slate-300 bg-slate-50 px-3 py-1 font-mono text-sm text-slate-900 tabular-nums dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+            />
+            <span className="font-mono text-xs font-bold text-sky-700 dark:text-cyan-300">
+              {labelOf(parB)}
+            </span>
+          </div>
+        </div>
+        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-700 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-200">
+            甲 ＋ 乙 ＝{' '}
+            <span className="font-mono font-bold text-slate-900 tabular-nums dark:text-white">{sum}</span>（
+            <span className="font-bold text-emerald-700 dark:text-emerald-300">{labelOf(sum)}</span>）
+          </div>
+          <div className="rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-700 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-200">
+            甲 × 乙 ＝{' '}
+            <span className="font-mono font-bold text-slate-900 tabular-nums dark:text-white">{prod}</span>（
+            <span className="font-bold text-emerald-700 dark:text-emerald-300">{labelOf(prod)}</span>）
+          </div>
         </div>
       </div>
     );
@@ -115,26 +181,26 @@ export function SectorMiniExplorer({ sectorId }: { sectorId: SectorId }) {
     const wedges = Array.from({ length: slices }, (_, i) => i);
     const w = 240 / (slices / 2);
     return (
-      <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-[#080D1A] dark:shadow-none">
-        <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
+      <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-4 shadow-sm sm:p-5 dark:border-emerald-500/30 dark:bg-[#080D1A] dark:shadow-none">
+        <div className="flex flex-col justify-between gap-3 md:flex-row md:items-center">
           <div>
-            <div className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">
-              動態幾何實驗 · 圓切拼長方形
+            <div className="text-xs font-bold text-emerald-700 dark:text-emerald-400">
+              動態幾何實驗 · 圓切拼長方形公式推導
             </div>
-            <h3 className="mt-1 text-base font-bold text-slate-900 dark:text-white">
-              拖動切割份數：切得越細，上下齒合越接近長方形
+            <h3 className="mt-0.5 text-sm font-bold text-slate-900 sm:text-base dark:text-white">
+              點擊切換切割份數：切得越細，上下齒合越接近長方形
             </h3>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-1.5">
             {[4, 8, 16, 32].map((s) => (
               <button
                 key={s}
                 type="button"
                 onClick={() => setSlices(s)}
-                className={`rounded-lg px-3 py-1.5 font-mono text-xs font-bold tabular-nums ${
+                className={`min-h-[36px] rounded-lg px-3 py-1 font-mono text-xs font-bold tabular-nums ${
                   slices === s
                     ? 'bg-emerald-600 text-white dark:bg-emerald-500 dark:text-slate-950'
-                    : 'border border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300'
+                    : 'border border-slate-200 bg-white text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300'
                 }`}
               >
                 切 {s} 份
@@ -143,8 +209,13 @@ export function SectorMiniExplorer({ sectorId }: { sectorId: SectorId }) {
           </div>
         </div>
 
-        <div className="mt-4 flex flex-col items-center gap-2 rounded-lg border border-slate-700 bg-slate-900 p-4 dark:border-slate-800 dark:bg-slate-900/60">
-          <svg viewBox="0 0 280 90" className="h-24 w-full max-w-md" role="img" aria-label={`圓形分割成${slices}份重組成近似長方形`}>
+        <div className="mt-3 flex flex-col items-center gap-2 rounded-lg border border-slate-700 bg-slate-900 p-3.5 dark:border-slate-800 dark:bg-slate-900/60">
+          <svg
+            viewBox="0 0 280 90"
+            className="h-24 w-full max-w-md"
+            role="img"
+            aria-label={`圓形分割成${slices}份重組成近似長方形`}
+          >
             {wedges.map((i) => {
               const isTop = i % 2 === 0;
               const colIdx = Math.floor(i / 2);
@@ -172,8 +243,8 @@ export function SectorMiniExplorer({ sectorId }: { sectorId: SectorId }) {
             })}
           </svg>
           <p className="text-xs text-slate-200">
-            上排＋下排共 <span className="font-mono font-bold text-white">{slices}</span> 個小扇形 → 寬 ≈{' '}
-            <span className="text-cyan-300">半徑</span>，長 ≈ <span className="text-amber-300">圓周長的一半</span>
+            長方形的寬 ＝ <span className="font-bold text-cyan-300">半徑</span>，長 ＝{' '}
+            <span className="font-bold text-amber-300">圓周長的一半 (半徑 × 3.14)</span> → 面積 ＝ 半徑 × 半徑 × 3.14
           </p>
         </div>
       </div>
@@ -193,14 +264,14 @@ export function SectorMiniExplorer({ sectorId }: { sectorId: SectorId }) {
       }
     }
     return (
-      <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-[#080D1A] dark:shadow-none">
-        <div className="flex flex-wrap items-center justify-between gap-4">
+      <div className="rounded-xl border border-teal-200 bg-teal-50/50 p-4 shadow-sm sm:p-5 dark:border-teal-500/30 dark:bg-[#080D1A] dark:shadow-none">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <div className="text-xs font-semibold text-sky-700 dark:text-cyan-400">
-              互動幾何驗證 · n 邊形對角線
+            <div className="text-xs font-bold text-teal-700 dark:text-teal-300">
+              互動幾何驗證 · n 邊形對角線即時連線儀
             </div>
-            <h3 className="mt-1 text-base font-bold text-slate-900 dark:text-white">
-              切換多邊形邊數 n，即時繪出所有對角線並套用公式
+            <h3 className="mt-0.5 text-sm font-bold text-slate-900 sm:text-base dark:text-white">
+              切換多邊形邊數 n，觀察為何公式要寫「n × (n － 3) ÷ 2」
             </h3>
           </div>
           <div className="flex flex-wrap gap-1.5">
@@ -209,10 +280,10 @@ export function SectorMiniExplorer({ sectorId }: { sectorId: SectorId }) {
                 key={n}
                 type="button"
                 onClick={() => setSides(n)}
-                className={`rounded-lg px-3 py-1 font-mono text-xs font-bold tabular-nums ${
+                className={`min-h-[36px] rounded-lg px-2.5 py-1 font-mono text-xs font-bold tabular-nums ${
                   sides === n
-                    ? 'bg-sky-600 text-white dark:bg-cyan-500 dark:text-slate-950'
-                    : 'border border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300'
+                    ? 'bg-teal-600 text-white dark:bg-teal-400 dark:text-slate-950'
+                    : 'border border-slate-200 bg-white text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300'
                 }`}
               >
                 n={n}
@@ -220,12 +291,12 @@ export function SectorMiniExplorer({ sectorId }: { sectorId: SectorId }) {
             ))}
           </div>
         </div>
-        <div className="mt-4 flex flex-col items-center gap-6 sm:flex-row">
+        <div className="mt-3 flex flex-col items-center gap-5 sm:flex-row">
           <div className="rounded-xl border border-slate-700 bg-slate-900 p-2 dark:border-slate-800">
             <svg width="160" height="150" viewBox="0 0 160 150" className="shrink-0">
               <polygon
                 points={pts.map((p) => `${p.x},${p.y}`).join(' ')}
-                fill="rgba(56,189,248,0.12)"
+                fill="rgba(20,184,166,0.16)"
                 stroke="#E2E8F0"
                 strokeWidth="2"
               />
@@ -241,19 +312,19 @@ export function SectorMiniExplorer({ sectorId }: { sectorId: SectorId }) {
                 />
               ))}
               {pts.map((p, idx) => (
-                <circle key={idx} cx={p.x} cy={p.y} r="4" fill="#38BDF8" />
+                <circle key={idx} cx={p.x} cy={p.y} r="4" fill="#2DD4BF" />
               ))}
             </svg>
           </div>
           <div className="space-y-2 text-sm text-slate-700 dark:text-slate-200">
             <div>
-              每個頂點可連出對角線數：
-              <span className="font-mono font-bold text-sky-700 dark:text-cyan-300">
+              ① 扣除自己與左右相鄰 2 點，每頂點可連：
+              <span className="font-mono font-bold text-teal-700 dark:text-teal-300">
                 {sides} － 3 ＝ {sides - 3} 條
               </span>
             </div>
             <div>
-              對角線總數：
+              ② 共 {sides} 個頂點且每條線重算 2 次，故除以 2：
               <span className="font-mono font-bold text-amber-700 dark:text-amber-300">
                 {sides} × ({sides} － 3) ÷ 2 ＝ {diags.length} 條
               </span>
@@ -265,71 +336,73 @@ export function SectorMiniExplorer({ sectorId }: { sectorId: SectorId }) {
   }
 
   if (sectorId === 's5') {
-    const animals = [
-      { id: 1, type: 'chicken' },
-      { id: 2, type: 'chicken' },
-      { id: 3, type: 'rabbit' },
-      { id: 4, type: 'chicken' },
-      { id: 5, type: 'rabbit' },
-      { id: 6, type: 'chicken' },
-      { id: 7, type: 'rabbit' },
-      { id: 8, type: 'chicken' },
+    const cases = [
+      {
+        title: '① 括號前是「－」：去括號要變號',
+        expr: '635 － (235 － 48)',
+        unbracketed: '635 － 235 ＋ 48',
+        value: 448,
+        story: '原本要買 235 元的書，現場折價 48 元（實付 187 元）。先從 635 元扣掉 235 元，再把多扣的 48 元「＋回來」，剩 448 元！',
+      },
+      {
+        title: '② 括號前是「÷」：連除與變號',
+        expr: '720 ÷ (8 × 9)',
+        unbracketed: '720 ÷ 8 ÷ 9',
+        value: 10,
+        story: '720 顆糖果要平分給 8×9=72 人，等於「先平分給 8 班，每班再平分給 9 人」，所以括號內的「×」要變成「÷」！',
+      },
+      {
+        title: '③ 乘法分配律拆解湊整',
+        expr: '25 × (40 ＋ 4)',
+        unbracketed: '25 × 40 ＋ 25 × 4',
+        value: 1100,
+        story: '把「44 盒各 25 顆」拆成「40 盒＋4 盒」，兩邊各自乘以 25 得到 1000 ＋ 100 ＝ 1100，完全不用列直式！',
+      },
     ];
+    const active = cases[ruleCase];
     return (
-      <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-[#080D1A] dark:shadow-none">
-        <div className="flex flex-wrap items-center justify-between gap-4">
+      <div className="rounded-xl border border-orange-200 bg-orange-50/55 p-4 shadow-sm sm:p-5 dark:border-orange-500/30 dark:bg-[#080D1A] dark:shadow-none">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <div className="text-xs font-semibold text-amber-700 dark:text-amber-400">
-              動態圖解 · 雞兔同籠「伸縮腳法」
+            <div className="text-xs font-bold text-orange-700 dark:text-amber-300">
+              互動等值天平 · 正數去括號 ＆ 分配律實驗器（不含負數）
             </div>
-            <h3 className="mt-1 text-base font-bold text-slate-900 dark:text-white">
-              範例：8 隻動物共 22 隻腳，一步一步揭曉雞兔數量
+            <h3 className="mt-0.5 text-sm font-bold text-slate-900 sm:text-base dark:text-white">
+              切換運算情境，親眼驗證去括號前後兩邊數值完全平衡
             </h3>
           </div>
-          <div className="flex flex-wrap gap-2">
-            {[
-              { s: 0 as const, label: '① 初始狀態（22 隻腳）' },
-              { s: 1 as const, label: '② 全部縮起 2 隻腳（減 16 隻）' },
-              { s: 2 as const, label: '③ 剩 6 隻腳 ÷ 2 ＝ 3 隻兔！' },
-            ].map((item) => (
+          <div className="flex flex-wrap gap-1.5">
+            {cases.map((c, idx) => (
               <button
-                key={item.s}
+                key={idx}
                 type="button"
-                onClick={() => setCrStep(item.s)}
-                className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${
-                  crStep === item.s
-                    ? 'bg-amber-500 text-white dark:bg-amber-400 dark:text-slate-950'
-                    : 'border border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200'
+                onClick={() => setRuleCase(idx as 0 | 1 | 2)}
+                className={`min-h-[36px] rounded-lg px-2.5 py-1 text-xs font-bold ${
+                  ruleCase === idx
+                    ? 'bg-orange-600 text-white dark:bg-amber-400 dark:text-slate-950'
+                    : 'border border-slate-200 bg-white text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200'
                 }`}
               >
-                {item.label}
+                情境 {idx + 1}
               </button>
             ))}
           </div>
         </div>
 
-        <div className="mt-4 grid grid-cols-4 gap-2 sm:grid-cols-8">
-          {animals.map((a) => {
-            const totalLegs = a.type === 'rabbit' ? 4 : 2;
-            const visibleLegs = crStep === 0 ? totalLegs : totalLegs - 2;
-            return (
-              <div
-                key={a.id}
-                className={`flex flex-col items-center rounded-lg border p-2 text-center ${
-                  crStep === 2 && a.type === 'rabbit'
-                    ? 'border-emerald-400 bg-emerald-50 dark:bg-emerald-500/15'
-                    : 'border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900/80'
-                }`}
-              >
-                <span className="text-xl" aria-hidden="true">
-                  {crStep === 2 ? (a.type === 'rabbit' ? '🐰' : '🐥') : '⭕'}
-                </span>
-                <span className="mt-1 font-mono text-xs font-bold text-sky-700 tabular-nums dark:text-cyan-300">
-                  剩 {visibleLegs} 腳
-                </span>
-              </div>
-            );
-          })}
+        <div className="mt-3 space-y-3 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900/70">
+          <div className="text-xs font-bold text-orange-700 dark:text-orange-300">{active.title}</div>
+          <div className="grid grid-cols-1 items-center gap-3 text-center sm:grid-cols-11">
+            <div className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2.5 font-mono text-base font-extrabold text-sky-900 sm:col-span-5 dark:border-cyan-500/40 dark:bg-cyan-500/15 dark:text-cyan-200">
+              {active.expr} ＝ {active.value}
+            </div>
+            <div className="font-mono text-lg font-extrabold text-emerald-600 sm:col-span-1 dark:text-emerald-400">
+              ＝
+            </div>
+            <div className="rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2.5 font-mono text-base font-extrabold text-emerald-900 sm:col-span-5 dark:border-emerald-500/40 dark:bg-emerald-500/15 dark:text-emerald-200">
+              {active.unbracketed} ＝ {active.value}
+            </div>
+          </div>
+          <p className="text-xs leading-relaxed text-slate-600 dark:text-slate-300">{active.story}</p>
         </div>
       </div>
     );
@@ -340,36 +413,70 @@ export function SectorMiniExplorer({ sectorId }: { sectorId: SectorId }) {
     const tri = (figN * (figN + 1)) / 2;
     const odds = Array.from({ length: figN }, (_, i) => 2 * i + 1).join('＋');
     return (
-      <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-[#080D1A] dark:shadow-none">
+      <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-4 shadow-sm sm:p-5 dark:border-emerald-500/30 dark:bg-[#080D1A] dark:shadow-none">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <div className="text-xs font-semibold text-sky-700 dark:text-cyan-400">
-              互動陣列 · 正方形數與三角形數
+            <div className="text-xs font-bold text-emerald-700 dark:text-emerald-400">
+              動態點陣生成器 · 正方形數與三角形數視覺對照
             </div>
-            <h3 className="mt-1 text-base font-bold text-slate-900 dark:text-white">
-              調整邊長 n = {figN}，比較正方形點陣與三角點陣
+            <h3 className="mt-0.5 text-sm font-bold text-slate-900 sm:text-base dark:text-white">
+              滑動調整層數 n = {figN}，即時生成點陣圓點排列與累加公式
             </h3>
           </div>
           <input
             type="range"
             min={2}
-            max={7}
+            max={6}
             value={figN}
             onChange={(e) => setFigN(Number(e.target.value))}
             aria-label="點陣邊長 n"
-            className="w-40 accent-sky-600 dark:accent-cyan-400"
+            className="w-40 accent-emerald-600 dark:accent-emerald-400"
           />
         </div>
-        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/80">
-            <div className="text-xs text-slate-500 dark:text-slate-400">第 {figN} 個正方形數</div>
-            <div className="mt-1 font-mono text-xl font-bold text-sky-700 tabular-nums dark:text-cyan-300">
+        <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="flex flex-col justify-between rounded-lg border border-slate-200 bg-white p-3.5 dark:border-slate-800 dark:bg-slate-900/80">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                第 {figN} 個正方形數（連續奇數和）
+              </span>
+              <span className="font-mono text-sm font-extrabold text-sky-700 tabular-nums dark:text-cyan-300">
+                {sq} 顆
+              </span>
+            </div>
+            <div className="my-2.5 flex justify-center">
+              <div
+                className="grid gap-1.5"
+                style={{ gridTemplateColumns: `repeat(${figN}, minmax(0, 1fr))` }}
+              >
+                {Array.from({ length: sq }, (_, idx) => (
+                  <span key={idx} className="h-3 w-3 rounded-full bg-sky-500 dark:bg-cyan-400" />
+                ))}
+              </div>
+            </div>
+            <div className="text-center font-mono text-xs font-bold text-slate-700 tabular-nums dark:text-slate-200">
               {odds} ＝ {sq}
             </div>
           </div>
-          <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/80">
-            <div className="text-xs text-slate-500 dark:text-slate-400">第 {figN} 個三角形數</div>
-            <div className="mt-1 font-mono text-xl font-bold text-amber-700 tabular-nums dark:text-amber-300">
+
+          <div className="flex flex-col justify-between rounded-lg border border-slate-200 bg-white p-3.5 dark:border-slate-800 dark:bg-slate-900/80">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                第 {figN} 個三角形數（高斯求和）
+              </span>
+              <span className="font-mono text-sm font-extrabold text-amber-600 tabular-nums dark:text-amber-300">
+                {tri} 顆
+              </span>
+            </div>
+            <div className="my-2.5 flex flex-col items-center gap-1">
+              {Array.from({ length: figN }, (_, r) => (
+                <div key={r} className="flex gap-1.5">
+                  {Array.from({ length: r + 1 }, (_, c) => (
+                    <span key={c} className="h-3 w-3 rounded-full bg-amber-500 dark:bg-amber-400" />
+                  ))}
+                </div>
+              ))}
+            </div>
+            <div className="text-center font-mono text-xs font-bold text-slate-700 tabular-nums dark:text-slate-200">
               {figN} × ({figN}＋1) ÷ 2 ＝ {tri}
             </div>
           </div>
@@ -381,14 +488,14 @@ export function SectorMiniExplorer({ sectorId }: { sectorId: SectorId }) {
   if (sectorId === 's7') {
     const val = Math.pow(2, powExp);
     return (
-      <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-[#080D1A] dark:shadow-none">
+      <div className="rounded-xl border border-sky-200 bg-sky-50/55 p-4 shadow-sm sm:p-5 dark:border-cyan-500/30 dark:bg-[#080D1A] dark:shadow-none">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <div className="text-xs font-semibold text-amber-700 dark:text-amber-400">
-              指數推演器 · 2 的乘方與個位循環
+            <div className="text-xs font-bold text-amber-700 dark:text-amber-400">
+              指數渦輪推演器 · 2 的乘方與個位數字循環
             </div>
-            <h3 className="mt-1 text-base font-bold text-slate-900 dark:text-white">
-              調整指數 n（0～11），熟悉常見 2 的次方數值
+            <h3 className="mt-0.5 text-sm font-bold text-slate-900 sm:text-base dark:text-white">
+              滑動指數 n（0～11），秒記常見 2 的次方數值
             </h3>
           </div>
           <input
@@ -401,13 +508,13 @@ export function SectorMiniExplorer({ sectorId }: { sectorId: SectorId }) {
             className="w-44 accent-amber-500 dark:accent-amber-400"
           />
         </div>
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-4 rounded-lg border border-slate-200 bg-slate-50 px-5 py-3 dark:border-slate-800 dark:bg-slate-900/80">
-          <span className="font-mono text-2xl font-bold text-slate-900 tabular-nums dark:text-white">
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-4 rounded-lg border border-slate-200 bg-white px-5 py-3 dark:border-slate-800 dark:bg-slate-900/80">
+          <span className="font-mono text-2xl font-extrabold text-slate-900 tabular-nums dark:text-white">
             2^{powExp} ＝ {val}
           </span>
           <span className="text-sm text-sky-700 dark:text-cyan-300">
             個位數字：
-            <strong className="font-mono text-lg text-amber-700 dark:text-amber-300">{val % 10}</strong>
+            <strong className="font-mono text-lg text-amber-600 dark:text-amber-300">{val % 10}</strong>
             （每 4 次方 2, 4, 8, 6 循環）
           </span>
         </div>
@@ -417,17 +524,17 @@ export function SectorMiniExplorer({ sectorId }: { sectorId: SectorId }) {
 
   const reversed = [...mirrorHeight].reverse();
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-[#080D1A] dark:shadow-none">
-      <div className="flex flex-wrap items-center justify-between gap-4">
+    <div className="rounded-xl border border-indigo-200 bg-indigo-50/50 p-4 shadow-sm sm:p-5 dark:border-indigo-500/30 dark:bg-[#080D1A] dark:shadow-none">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <div className="text-xs font-semibold text-sky-700 dark:text-cyan-400">
-            視圖鏡像對照器 · 左視圖 vs 右視圖
+          <div className="text-xs font-bold text-indigo-700 dark:text-indigo-300">
+            全息視圖鏡像儀 · 左視圖 vs 右視圖
           </div>
-          <h3 className="mt-1 text-base font-bold text-slate-900 dark:text-white">
-            點擊調整左視圖三欄高度，觀察右視圖如何左右鏡像翻轉
+          <h3 className="mt-0.5 text-sm font-bold text-slate-900 sm:text-base dark:text-white">
+            點擊切換左視圖三欄高度，觀察右視圖如何左右鏡像翻轉
           </h3>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-1.5">
           {mirrorHeight.map((h, i) => (
             <button
               key={i}
@@ -439,16 +546,16 @@ export function SectorMiniExplorer({ sectorId }: { sectorId: SectorId }) {
                   return next;
                 })
               }
-              className="min-h-[40px] rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 font-mono text-xs font-semibold text-sky-800 dark:border-slate-700 dark:bg-slate-900 dark:text-cyan-200"
+              className="min-h-[38px] rounded-lg border border-slate-200 bg-white px-3 py-1 font-mono text-xs font-bold text-indigo-700 dark:border-slate-700 dark:bg-slate-900 dark:text-indigo-200"
             >
               第{i + 1}欄：{h}層
             </button>
           ))}
         </div>
       </div>
-      <div className="mt-4 grid grid-cols-2 gap-4 text-center">
-        <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-900/70">
-          <div className="mb-2 text-xs text-slate-500 dark:text-slate-400">左視圖</div>
+      <div className="mt-3 grid grid-cols-2 gap-4 text-center">
+        <div className="rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900/70">
+          <div className="mb-2 text-xs font-semibold text-slate-500 dark:text-slate-400">左視圖</div>
           <div className="flex h-16 items-end justify-center gap-1.5">
             {mirrorHeight.map((h, idx) => (
               <div key={idx} className="flex flex-col-reverse gap-0.5">
@@ -459,8 +566,10 @@ export function SectorMiniExplorer({ sectorId }: { sectorId: SectorId }) {
             ))}
           </div>
         </div>
-        <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-900/70">
-          <div className="mb-2 text-xs text-slate-500 dark:text-slate-400">右視圖（左右鏡像相反）</div>
+        <div className="rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900/70">
+          <div className="mb-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
+            右視圖（左右鏡像相反）
+          </div>
           <div className="flex h-16 items-end justify-center gap-1.5">
             {reversed.map((h, idx) => (
               <div key={idx} className="flex flex-col-reverse gap-0.5">
@@ -508,15 +617,6 @@ export function TeachInteractiveView({
 
       <SectorMiniExplorer sectorId={sector.id} />
 
-      <div className="rounded-2xl border border-purple-200 bg-purple-50/90 p-6 dark:border-purple-500/35 dark:bg-purple-500/10">
-        <div className="text-xs font-semibold text-purple-800 dark:text-amber-300">
-          {sector.coolFactTitle}
-        </div>
-        <p className="mt-2 text-sm leading-relaxed text-slate-700 dark:text-slate-200">
-          {sector.coolFactBody}
-        </p>
-      </div>
-
       <div className="flex flex-wrap items-center justify-end gap-3">
         <button
           type="button"
@@ -527,7 +627,7 @@ export function TeachInteractiveView({
               : 'bg-amber-500 text-white hover:bg-amber-600 dark:bg-amber-400 dark:text-slate-950 dark:hover:bg-amber-300'
           }`}
         >
-          {isCompleted ? '✓ 重點教學已完成（+30分）' : '完成重點教學（+30分）'}
+          {isCompleted ? '✓ 重點教學已完成' : '完成重點教學'}
         </button>
 
         <button
@@ -535,7 +635,7 @@ export function TeachInteractiveView({
           onClick={onGoNextTab}
           className="whitespace-nowrap rounded-xl bg-sky-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-sky-700 dark:bg-cyan-500 dark:text-slate-950 dark:hover:bg-cyan-400"
         >
-          前往題目演練 →
+          前往實戰演練 →
         </button>
       </div>
     </div>

@@ -214,7 +214,7 @@ export function KenKenLab({ isCompleted, onComplete }: KenKenLabProps) {
       <div className="flex flex-col justify-between gap-4 border-b border-slate-200 pb-4 sm:pb-5 lg:flex-row lg:items-end dark:border-slate-800">
         <div>
           <p className="text-xs font-semibold text-sky-700 dark:text-cyan-400">
-            創意課程 · 主題 5 算獨邏輯
+            創意課程 · 主題 2 雙星奇偶觀測站
           </p>
           <h3 className="mt-1 text-lg font-bold text-slate-900 sm:text-xl dark:text-white">
             KenKen 數獨（算獨對決）

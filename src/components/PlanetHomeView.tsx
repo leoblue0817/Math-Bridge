@@ -6,6 +6,8 @@ import {
   ArrowRight,
   BookMarked,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   ChevronUp,
   Crosshair,
   Flag,
@@ -84,14 +86,15 @@ export const PLANET_META: Record<SectorId, PlanetOrbitMeta> = {
     orbitRadius: 90,
     orbitDuration: 24,
     startAngle: -28,
-    planetRadius: 18,
-    colorLight: '#C4B5FD',
-    color: '#8B5CF6',
-    colorDeep: '#4C1D95',
-    glowColor: '#C4B5FD',
-    bandColor: '#EDE9FE',
-    landFill: '#C084FC',
+    planetRadius: 19,
+    colorLight: '#7DD3FC',
+    color: '#0EA5E9',
+    colorDeep: '#0C4A6E',
+    glowColor: '#38BDF8',
+    bandColor: '#E0F2FE',
+    landFill: '#38BDF8',
     shoreFill: '#FDE68A',
+    hasRing: true,
     hasMoon: true,
   },
   s2: {
@@ -102,12 +105,12 @@ export const PLANET_META: Record<SectorId, PlanetOrbitMeta> = {
     orbitDuration: 30,
     startAngle: 46,
     planetRadius: 20,
-    colorLight: '#F9A8D4',
-    color: '#EC4899',
-    colorDeep: '#831843',
-    glowColor: '#F9A8D4',
-    bandColor: '#FCE7F3',
-    landFill: '#F472B6',
+    colorLight: '#C4B5FD',
+    color: '#8B5CF6',
+    colorDeep: '#4C1D95',
+    glowColor: '#C4B5FD',
+    bandColor: '#EDE9FE',
+    landFill: '#A78BFA',
     shoreFill: '#FEF08A',
   },
   s3: {
@@ -152,12 +155,12 @@ export const PLANET_META: Record<SectorId, PlanetOrbitMeta> = {
     orbitDuration: 54,
     startAngle: -102,
     planetRadius: 21,
-    colorLight: '#FED7AA',
-    color: '#F97316',
-    colorDeep: '#7C2D12',
-    glowColor: '#FDBA74',
-    bandColor: '#FFEDD5',
-    landFill: '#FB923C',
+    colorLight: '#FDA4AF',
+    color: '#FB7185',
+    colorDeep: '#881337',
+    glowColor: '#FDA4AF',
+    bandColor: '#FFE4E6',
+    landFill: '#F43F5E',
     shoreFill: '#FEF3C7',
     hasMoon: true,
   },
@@ -187,13 +190,13 @@ export const PLANET_META: Record<SectorId, PlanetOrbitMeta> = {
     orbitDuration: 72,
     startAngle: 92,
     planetRadius: 22,
-    colorLight: '#BAE6FD',
-    color: '#0EA5E9',
-    colorDeep: '#0C4A6E',
-    glowColor: '#7DD3FC',
-    bandColor: '#E0F2FE',
-    landFill: '#38BDF8',
-    shoreFill: '#F0F9FF',
+    colorLight: '#FDE68A',
+    color: '#F97316',
+    colorDeep: '#7C2D12',
+    glowColor: '#FDBA74',
+    bandColor: '#FFEDD5',
+    landFill: '#FB923C',
+    shoreFill: '#E0F2FE',
     hasRing: true,
   },
   s8: {
@@ -215,16 +218,6 @@ export const PLANET_META: Record<SectorId, PlanetOrbitMeta> = {
   },
 };
 
-const PLANET_SUBTITLE_MAP: Record<SectorId, string> = {
-  s1: '雙峰奇偶翡翠星',
-  s2: '燈塔規律粉晶星',
-  s3: '離子面積琥珀星',
-  s4: '光環賽博計數星',
-  s5: '跨河峽谷橘焰星',
-  s6: '翡翠環繞生態星',
-  s7: '冰晶陣列深藍星',
-  s8: '航太雙塔靛藍星',
-};
 
 // Reusable module-scope math objects (zero per-frame heap allocations)
 const _vec3A = new THREE.Vector3();
@@ -270,8 +263,10 @@ export function PlanetHomeView({
     typeof window !== 'undefined' ? window.innerWidth >= 768 : true
   );
   const [mobileControlsOpen, setMobileControlsOpen] = useState(false);
+  const [dockScrollArrows, setDockScrollArrows] = useState({ left: false, right: true });
 
   const canvasMountRef = useRef<HTMLDivElement | null>(null);
+  const dockStripRef = useRef<HTMLDivElement | null>(null);
   const labelRefs = useRef<Partial<Record<SectorId, HTMLButtonElement | null>>>({});
 
   // Latest UI state synced into mutable refs so the Three.js scene runs uninterrupted
@@ -337,6 +332,30 @@ export function PlanetHomeView({
   useEffect(() => {
     liveThemeSyncRef.current?.(theme);
   }, [theme]);
+
+  const updateDockScrollState = () => {
+    const el = dockStripRef.current;
+    if (!el) return;
+    const { scrollLeft, scrollWidth, clientWidth } = el;
+    setDockScrollArrows({
+      left: scrollLeft > 4,
+      right: scrollLeft + clientWidth < scrollWidth - 4,
+    });
+  };
+
+  useEffect(() => {
+    const id = window.setTimeout(updateDockScrollState, 60);
+    window.addEventListener('resize', updateDockScrollState);
+    return () => {
+      window.clearTimeout(id);
+      window.removeEventListener('resize', updateDockScrollState);
+    };
+  }, [dockOpen]);
+
+  const scrollDockBy = (delta: number) => {
+    soundEngine.playClick();
+    dockStripRef.current?.scrollBy({ left: delta, behavior: 'smooth' });
+  };
 
   // Trigger smooth camera fly-to whenever focusedSector changes
   useEffect(() => {
@@ -1304,7 +1323,8 @@ export function PlanetHomeView({
               onMouseEnter={() => setHoveredSector(sec.id)}
               onMouseLeave={() => setHoveredSector((prev) => (prev === sec.id ? null : prev))}
               onClick={() => handleDockPlanetClick(sec.id)}
-              aria-label={`飛往第 ${sec.code} 星球 ${sec.shortTitle}，目前已收集 ${stats.earned} 顆星`}
+              aria-label={`飛往 ${sec.code} ${sec.planetName}（${sec.topicName}），目前已收集 ${stats.earned} 顆星`}
+              title={`${sec.code}｜${sec.planetName}（${sec.topicName}）`}
               style={{
                 opacity: 0,
                 borderColor: isFocused || isHovered ? meta.color : undefined,
@@ -1321,8 +1341,8 @@ export function PlanetHomeView({
                 className="inline-block h-2 w-2 shrink-0 rounded-full"
                 style={{ backgroundColor: meta.color }}
               />
-              <span className="font-mono text-[9px] opacity-80 sm:text-[10px]">{sec.code}</span>
-              <span className="whitespace-nowrap">{sec.shortTitle}</span>
+              <span className="text-[9px] font-extrabold opacity-80 sm:text-[10px]">{sec.code}</span>
+              <span className="whitespace-nowrap">{sec.planetName}</span>
               <span
                 className={`items-center gap-0.5 rounded-md px-1 py-0.5 font-mono text-[10px] ${
                   isFocused || isRecommended ? 'inline-flex' : 'hidden sm:inline-flex'
@@ -1484,14 +1504,17 @@ export function PlanetHomeView({
                     style={{ backgroundColor: PLANET_META[focusedSectorDef.id].color }}
                   >
                     <Crosshair className="h-3 w-3" aria-hidden="true" />
-                    第 {focusedSectorDef.code} 星球鎖定
+                    {focusedSectorDef.code}鎖定
                   </span>
                   <span className="text-xs font-semibold text-sky-700 dark:text-cyan-300">
-                    {PLANET_SUBTITLE_MAP[focusedSectorDef.id]}
+                    {focusedSectorDef.planetFlavor}
                   </span>
                 </div>
-                <h2 className="mt-1.5 text-lg font-extrabold text-slate-900 dark:text-white">
-                  {focusedSectorDef.title}
+                <h2 className="mt-1.5 text-lg font-extrabold leading-snug text-slate-900 dark:text-white">
+                  <span className="block">{focusedSectorDef.planetName}</span>
+                  <span className="block text-sm font-bold text-sky-700 dark:text-cyan-300">
+                    {focusedSectorDef.topicName}
+                  </span>
                 </h2>
               </div>
 
@@ -1542,7 +1565,7 @@ export function PlanetHomeView({
       )}
 
       {/* ================= COLLAPSIBLE BOTTOM STAR-SYSTEM CONTROL DOCK ================= */}
-      <div className="pointer-events-none fixed bottom-[calc(64px+env(safe-area-inset-bottom))] left-1/2 z-20 flex w-[96%] max-w-[1040px] -translate-x-1/2 flex-col items-center md:bottom-2.5">
+      <div className="pointer-events-none fixed bottom-[calc(64px+env(safe-area-inset-bottom))] left-1/2 z-20 flex w-[96%] max-w-[1180px] -translate-x-1/2 flex-col items-center md:bottom-2.5">
         <button
           type="button"
           onClick={() => setDockOpen((v) => !v)}
@@ -1570,7 +1593,7 @@ export function PlanetHomeView({
           <div
             className={`${
               dockOpen ? 'flex' : 'hidden'
-            } flex-wrap items-center justify-between gap-2 lg:justify-start`}
+            } shrink-0 flex-wrap items-center justify-between gap-2 lg:justify-start`}
           >
             <div className="flex items-center gap-2.5 text-xs font-bold">
               <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-300">
@@ -1628,47 +1651,82 @@ export function PlanetHomeView({
             </div>
           </div>
 
-          {/* Right Quick-Fly 8 Planets Strip (always swipeable on mobile even when telemetry is collapsed) */}
+          {/* Right Quick-Fly 8 Planets Strip with Left/Right Scroll Arrows + Wheel + Touch Swipe */}
           <div
             className={`${
               dockOpen ? 'flex' : 'flex md:hidden'
-            } no-scrollbar items-center gap-1.5 overflow-x-auto pb-0.5 lg:pb-0`}
+            } min-w-0 flex-1 items-center gap-1.5`}
           >
-            {SECTORS.map((sec) => {
-              const meta = PLANET_META[sec.id];
-              const stats = getSectorStarStats(sec, profile.sectors[sec.id]);
-              const isFocused = focusedSector === sec.id;
-              const isDone = stats.earned === stats.total;
-              const isNext = nextRecommendedSector === sec.id && !focusedSector;
+            <button
+              type="button"
+              onClick={() => scrollDockBy(-220)}
+              disabled={!dockScrollArrows.left}
+              aria-label="向左捲動查看前段星球"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-300/70 bg-white/75 text-slate-700 transition-all hover:border-sky-400 hover:text-sky-600 disabled:cursor-not-allowed disabled:opacity-30 dark:border-slate-700/70 dark:bg-slate-900/75 dark:text-slate-200 dark:hover:border-cyan-400"
+            >
+              <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+            </button>
 
-              return (
-                <button
-                  key={sec.id}
-                  type="button"
-                  data-sfx="custom"
-                  onMouseEnter={() => setHoveredSector(sec.id)}
-                  onMouseLeave={() => setHoveredSector((p) => (p === sec.id ? null : p))}
-                  onClick={() => handleDockPlanetClick(sec.id)}
-                  className={`inline-flex min-h-[38px] shrink-0 items-center gap-1.5 rounded-xl border px-2.5 py-1.5 text-[11px] font-bold transition-all sm:min-h-0 ${
-                    isFocused
-                      ? 'border-cyan-400 bg-sky-500/20 text-sky-900 shadow-sm dark:text-white'
-                      : isNext
-                      ? 'border-amber-400/70 bg-amber-500/10 text-slate-900 dark:text-white'
-                      : 'border-slate-300/60 bg-white/60 text-slate-800 hover:border-sky-400 dark:border-slate-700/70 dark:bg-slate-900/65 dark:text-slate-200'
-                  }`}
-                >
-                  <span
-                    className="h-2 w-2 rounded-full"
-                    style={{ backgroundColor: meta.color }}
-                  />
-                  <span className="font-mono text-[10px] opacity-75">{sec.code}</span>
-                  <span>{sec.shortTitle}</span>
-                  {isDone && (
-                    <Star className="h-3 w-3 fill-emerald-500 text-emerald-500" aria-hidden="true" />
-                  )}
-                </button>
-              );
-            })}
+            <div
+              ref={dockStripRef}
+              onScroll={updateDockScrollState}
+              onWheel={(e) => {
+                const el = dockStripRef.current;
+                if (!el || el.scrollWidth <= el.clientWidth) return;
+                if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+                  e.preventDefault();
+                  el.scrollLeft += e.deltaY;
+                }
+              }}
+              className="no-scrollbar flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto scroll-smooth pb-0.5 lg:pb-0"
+            >
+              {SECTORS.map((sec) => {
+                const meta = PLANET_META[sec.id];
+                const stats = getSectorStarStats(sec, profile.sectors[sec.id]);
+                const isFocused = focusedSector === sec.id;
+                const isDone = stats.earned === stats.total;
+                const isNext = nextRecommendedSector === sec.id && !focusedSector;
+
+                return (
+                  <button
+                    key={sec.id}
+                    type="button"
+                    data-sfx="custom"
+                    onMouseEnter={() => setHoveredSector(sec.id)}
+                    onMouseLeave={() => setHoveredSector((p) => (p === sec.id ? null : p))}
+                    onClick={() => handleDockPlanetClick(sec.id)}
+                    title={`${sec.code}｜${sec.planetName}（${sec.topicName}）`}
+                    className={`inline-flex min-h-[38px] shrink-0 items-center gap-1.5 rounded-xl border px-2.5 py-1.5 text-[11px] font-bold transition-all sm:min-h-0 ${
+                      isFocused
+                        ? 'border-cyan-400 bg-sky-500/20 text-sky-900 shadow-sm dark:text-white'
+                        : isNext
+                        ? 'border-amber-400/70 bg-amber-500/10 text-slate-900 dark:text-white'
+                        : 'border-slate-300/60 bg-white/60 text-slate-800 hover:border-sky-400 dark:border-slate-700/70 dark:bg-slate-900/65 dark:text-slate-200'
+                    }`}
+                  >
+                    <span
+                      className="h-2 w-2 rounded-full"
+                      style={{ backgroundColor: meta.color }}
+                    />
+                    <span className="text-[10px] font-extrabold opacity-80">{sec.code}</span>
+                    <span>{sec.planetName}</span>
+                    {isDone && (
+                      <Star className="h-3 w-3 fill-emerald-500 text-emerald-500" aria-hidden="true" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => scrollDockBy(220)}
+              disabled={!dockScrollArrows.right}
+              aria-label="向右捲動查看後續星球"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-300/70 bg-white/75 text-slate-700 transition-all hover:border-sky-400 hover:text-sky-600 disabled:cursor-not-allowed disabled:opacity-30 dark:border-slate-700/70 dark:bg-slate-900/75 dark:text-slate-200 dark:hover:border-cyan-400"
+            >
+              <ChevronRight className="h-4 w-4" aria-hidden="true" />
+            </button>
           </div>
         </div>
       </div>

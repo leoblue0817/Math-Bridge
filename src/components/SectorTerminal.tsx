@@ -6,7 +6,6 @@ import {
   ChevronRight,
   Compass,
   Gamepad2,
-  Link2,
   Presentation,
   Rocket,
   Star,
@@ -18,15 +17,14 @@ import { AudioToggleButtons } from './AudioToggleButtons';
 import { PLANET_META } from './PlanetHomeView';
 import { ThemeContext } from './ThemeContext';
 import { SlideDeckView } from './SlideDeckView';
-import { WarmupChallengeView } from './WarmupChallengeView';
 import { MicroLevelStageView } from './MicroLevelStageView';
 import { DotsAndBoxesLab } from './labs/DotsAndBoxesLab';
-import { MindReaderCardsLab } from './labs/MindReaderCardsLab';
-import { SymmetryOrigamiLab } from './labs/SymmetryOrigamiLab';
-import { SlitherlinkLab } from './labs/SlitherlinkLab';
 import { KenKenLab } from './labs/KenKenLab';
-import { ShikakuLab } from './labs/ShikakuLab';
-import { QuickCalc24Lab } from './labs/QuickCalc24Lab';
+import { SymmetryOrigamiLab } from './labs/SymmetryOrigamiLab';
+import { NumberlinkLab } from './labs/NumberlinkLab';
+import { EquationMatchLab } from './labs/EquationMatchLab';
+import { MatchstickClockLab } from './labs/MatchstickClockLab';
+import { ExponentRewardLab } from './labs/ExponentRewardLab';
 import { VoxelViewsLab } from './labs/VoxelViewsLab';
 
 interface SectorTerminalProps {
@@ -41,7 +39,6 @@ interface SectorTerminalProps {
   onSelectSector: (id: SectorId) => void;
   onChangeMode: (mode: AppMode) => void;
   onCompleteSlides: (id: SectorId) => void;
-  onCompleteWarmup: (id: SectorId) => void;
   onAnswerSubQuiz: (
     id: SectorId,
     subId: string,
@@ -81,7 +78,6 @@ function PlanetViewportWindow({ sectorId }: { sectorId: SectorId }) {
           </clipPath>
         </defs>
 
-        {/* Background Stars or Clouds */}
         {isDark ? (
           <>
             <circle cx="16" cy="18" r="1.2" fill="#E0F2FE" opacity="0.7" />
@@ -96,7 +92,6 @@ function PlanetViewportWindow({ sectorId }: { sectorId: SectorId }) {
           </g>
         )}
 
-        {/* Atmosphere Ring */}
         <circle
           cx="56"
           cy="48"
@@ -108,7 +103,6 @@ function PlanetViewportWindow({ sectorId }: { sectorId: SectorId }) {
           strokeDasharray="4 4"
         />
 
-        {/* Tilted Planetary Ring */}
         {meta.hasRing && (
           <ellipse
             cx="56"
@@ -123,10 +117,8 @@ function PlanetViewportWindow({ sectorId }: { sectorId: SectorId }) {
           />
         )}
 
-        {/* Main Planet */}
         <circle cx="56" cy="48" r="24" fill={`url(#vp-grad-${sectorId})`} stroke={meta.glowColor} strokeWidth="1" />
 
-        {/* Axial Texture Drift */}
         <g clipPath={`url(#vp-clip-${sectorId})`}>
           <g className="animate-planet-axial">
             <ellipse cx="50" cy="41" rx="20" ry="4" fill={meta.bandColor} fillOpacity="0.45" />
@@ -134,7 +126,6 @@ function PlanetViewportWindow({ sectorId }: { sectorId: SectorId }) {
           </g>
         </g>
 
-        {/* Orbiting Mini Moon & Patrolling Exploration Craft */}
         <g className="animate-orbit-spin" style={{ transformOrigin: '56px 48px', animationDuration: '9s' }}>
           <circle cx="90" cy="48" r="3.6" fill="#F8FAFC" stroke={meta.glowColor} strokeWidth="1" />
         </g>
@@ -161,7 +152,6 @@ export function SectorTerminal({
   onSelectSector,
   onChangeMode,
   onCompleteSlides,
-  onCompleteWarmup,
   onAnswerSubQuiz,
   onResetSubQuiz,
   onCompleteLab,
@@ -188,31 +178,23 @@ export function SectorTerminal({
       id: 'slides',
       stepNum: '01',
       label: '單元簡報',
-      subLabel: secProgress.slides ? '已過關 ★' : '觀念啟航',
+      subLabel: secProgress.slides ? '已過關 ★' : '觀念解碼',
       icon: Presentation,
       done: secProgress.slides,
     },
     {
-      id: 'warmup',
+      id: 'drill',
       stepNum: '02',
-      label: sector.warmup.type === 'match' ? '觀念連連看' : '圖形佈置熱身',
-      subLabel: secProgress.warmup ? '已過關 ★' : '互動暖身',
-      icon: Link2,
-      done: secProgress.warmup,
-    },
-    {
-      id: 'micro',
-      stepNum: '03',
-      label: '小節微關卡',
-      subLabel: `已奪 ${starStats.subDone}/${starStats.subTotal} 星`,
+      label: '實戰演練',
+      subLabel: `8 題 · 已奪 ${starStats.subDone}/${starStats.subTotal} 星`,
       icon: Compass,
       done: starStats.subDone === starStats.subTotal,
     },
     {
       id: 'lab',
-      stepNum: '04',
+      stepNum: '03',
       label: '創意對戰',
-      subLabel: secProgress.lab ? '已過關 ★' : '實戰對決',
+      subLabel: secProgress.lab ? '已過關 ★' : sector.creativeName,
       icon: Gamepad2,
       done: secProgress.lab,
     },
@@ -226,17 +208,17 @@ export function SectorTerminal({
       case 's1':
         return <DotsAndBoxesLab isCompleted={done} onComplete={finish} />;
       case 's2':
-        return <MindReaderCardsLab isCompleted={done} onComplete={finish} />;
+        return <KenKenLab isCompleted={done} onComplete={finish} />;
       case 's3':
         return <SymmetryOrigamiLab isCompleted={done} onComplete={finish} />;
       case 's4':
-        return <SlitherlinkLab isCompleted={done} onComplete={finish} />;
+        return <NumberlinkLab isCompleted={done} onComplete={finish} />;
       case 's5':
-        return <KenKenLab isCompleted={done} onComplete={finish} />;
+        return <EquationMatchLab isCompleted={done} onComplete={finish} />;
       case 's6':
-        return <ShikakuLab isCompleted={done} onComplete={finish} />;
+        return <MatchstickClockLab isCompleted={done} onComplete={finish} />;
       case 's7':
-        return <QuickCalc24Lab isCompleted={done} onComplete={finish} />;
+        return <ExponentRewardLab isCompleted={done} onComplete={finish} />;
       case 's8':
         return <VoxelViewsLab isCompleted={done} onComplete={finish} />;
     }
@@ -261,7 +243,7 @@ export function SectorTerminal({
                   <span>返回星圖</span>
                 </button>
                 <span aria-hidden="true">/</span>
-                <span className="font-mono font-semibold text-amber-700 dark:text-amber-300">
+                <span className="font-semibold text-amber-700 dark:text-amber-300">
                   {sector.code}
                 </span>
                 <span aria-hidden="true">·</span>
@@ -270,8 +252,11 @@ export function SectorTerminal({
                 <span>探索者：{profile.name}</span>
               </div>
 
-              <h1 className="text-2xl font-extrabold text-slate-900 md:text-3xl dark:text-white">
-                {sector.title}
+              <h1 className="text-2xl font-extrabold leading-tight text-slate-900 md:text-3xl dark:text-white">
+                <span className="block">{sector.planetName}</span>
+                <span className="mt-1 block text-base font-bold text-sky-700 md:text-lg dark:text-cyan-300">
+                  {sector.topicName}
+                </span>
               </h1>
               <p className="text-sm text-slate-600 dark:text-slate-300">{sector.desc}</p>
             </div>
@@ -338,32 +323,23 @@ export function SectorTerminal({
         </div>
       </div>
 
-      {/* Glowing Energy Quest Route Stepper + Moving Spaceship Avatar */}
+      {/* Streamlined 3-Station Quest Route Stepper */}
       <div
         role="tablist"
         aria-label="星球闖關航線"
         className="relative rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm dark:border-slate-800 dark:bg-[#0D1424]/95 dark:shadow-none"
       >
-        {/* Horizontal Connecting Energy Beam (Desktop) */}
         {(() => {
-          const beamPct =
-            activeTab === 'slides'
-              ? 12
-              : activeTab === 'warmup'
-              ? 42
-              : activeTab === 'micro'
-              ? 72
-              : 96;
+          const beamPct = activeTab === 'slides' ? 16 : activeTab === 'drill' ? 50 : 84;
           return (
             <div
               aria-hidden="true"
-              className="pointer-events-none absolute top-[44px] right-16 left-16 hidden h-1.5 rounded-full bg-slate-200 sm:block dark:bg-slate-800"
+              className="pointer-events-none absolute top-[44px] right-20 left-20 hidden h-1.5 rounded-full bg-slate-200 sm:block dark:bg-slate-800"
             >
               <div
                 className="h-full rounded-full bg-gradient-to-r from-emerald-400 via-cyan-400 to-amber-400 transition-all duration-500"
                 style={{ width: `${beamPct}%` }}
               />
-              {/* Animated Starship Avatar gliding along Mission Track */}
               <div
                 className="absolute -top-2.5 flex h-6 w-6 -translate-x-1/2 items-center justify-center rounded-full border border-cyan-300 bg-slate-950 text-cyan-300 shadow-md transition-all duration-500"
                 style={{ left: `${beamPct}%` }}
@@ -374,7 +350,7 @@ export function SectorTerminal({
           );
         })()}
 
-        <div className="relative z-10 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="relative z-10 grid grid-cols-3 gap-2.5 sm:gap-4">
           {questNodes.map((node) => {
             const Icon = node.icon;
             const isActive = activeTab === node.id;
@@ -413,13 +389,13 @@ export function SectorTerminal({
                   )}
                 </div>
 
-                <div>
-                  <div className="text-xs font-extrabold text-slate-900 dark:text-white">
+                <div className="min-w-0">
+                  <div className="text-xs font-extrabold text-slate-900 sm:text-sm dark:text-white">
                     <span className="mr-1 font-mono text-sky-700 dark:text-cyan-300">{node.stepNum}</span>
                     {node.label}
                   </div>
                   <div
-                    className={`mt-0.5 text-[11px] font-semibold ${
+                    className={`mt-0.5 truncate text-[11px] font-semibold ${
                       node.done
                         ? 'text-emerald-700 dark:text-emerald-300'
                         : isActive
@@ -443,30 +419,17 @@ export function SectorTerminal({
             sector={sector}
             isCompleted={secProgress.slides}
             onComplete={() => onCompleteSlides(sector.id)}
-            onGoNextTab={() => onChangeTab('warmup')}
+            onGoNextTab={() => onChangeTab('drill')}
           />
         )}
 
-        {activeTab === 'warmup' && (
-          <WarmupChallengeView
-            sector={sector}
-            isCompleted={secProgress.warmup}
-            onComplete={() => onCompleteWarmup(sector.id)}
-            onGoNextTab={() => onChangeTab('micro')}
-            onFeedback={onFeedback}
-          />
-        )}
-
-        {activeTab === 'micro' && (
+        {activeTab === 'drill' && (
           <MicroLevelStageView
             sector={sector}
             progress={secProgress}
             mode={mode}
             activeSubId={activeSubId}
-            onSelectSubId={(subId) => {
-              soundEngine.playClick();
-              onSelectSubId(subId);
-            }}
+            onSelectSubId={(subId) => onSelectSubId(subId)}
             onAnswerSubQuiz={(subId, qId, qIdx, optIdx, isCorrect) =>
               onAnswerSubQuiz(sector.id, subId, qId, qIdx, optIdx, isCorrect)
             }

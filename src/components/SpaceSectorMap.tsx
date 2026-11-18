@@ -84,10 +84,10 @@ export function SpaceSectorMap({
               小六升國一銜接數學 · 八區航圖總覽（學生：{profile.name}）
             </div>
             <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 md:text-3xl dark:text-white">
-              探索 8 大數學星球，完成簡報、熱身配對、小節微關卡與創意對戰
+              探索 8 大數學星球，完成簡報、8 題實戰演練與創意對戰
             </h1>
             <p className="text-sm leading-relaxed text-slate-700 md:text-base dark:text-slate-300">
-              每個星域都配有課堂簡報、觀念連連看或幾何圖形佈置熱身、2 至 3 個小節微關卡，以及點格棋、二進位魔術卡、黃黑灰摺紙、數迴、KenKen 數獨、數方、速算與立體積木等實戰遊戲。
+              每個星域都配有互動實驗簡報、基礎＋進階共 8 題實戰演練，以及點格對決、KenKen 算獨、摺摺稱奇、數連 Numberlink、等值算式連線、電子鐘火柴棒、指數獎勵倍增戰與神秘三視圖等創意對決。
             </p>
           </div>
 
@@ -177,7 +177,7 @@ export function SpaceSectorMap({
         <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
           <h2 className="text-lg font-bold text-slate-900 dark:text-white">星域任務總覽</h2>
           <span className="text-xs text-slate-600 dark:text-slate-400">
-            依序完成簡報、熱身關卡、小節微關卡與創意對戰即可點亮該區全部星星
+            完成單元簡報、8 題實戰演練與創意對戰即可點亮該區全部 4 顆星星
           </span>
         </div>
 
@@ -189,8 +189,7 @@ export function SpaceSectorMap({
 
             const tasks = [
               { label: '簡報', done: p.slides },
-              { label: '熱身', done: p.warmup },
-              { label: `微關${stats.subDone}/${stats.subTotal}`, done: stats.subDone === stats.subTotal },
+              { label: `實戰${stats.subDone}/${stats.subTotal}`, done: stats.subDone === stats.subTotal },
               { label: '創意', done: p.lab },
             ];
 
@@ -207,14 +206,17 @@ export function SpaceSectorMap({
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
-                        <span className="font-mono font-semibold text-sky-700 dark:text-cyan-400">
+                        <span className="font-semibold text-sky-700 dark:text-cyan-400">
                           {sec.code}
                         </span>
                         <span aria-hidden="true">·</span>
-                        <span>★{stats.earned}/{stats.total}</span>
+                        <span className="font-mono tabular-nums">★{stats.earned}/{stats.total}</span>
                       </div>
-                      <h3 className="mt-1.5 text-lg font-bold text-slate-900 dark:text-white">
-                        {sec.title}
+                      <h3 className="mt-1.5 text-lg font-extrabold leading-snug text-slate-900 dark:text-white">
+                        <span className="block">{sec.planetName}</span>
+                        <span className="mt-0.5 block text-sm font-bold text-sky-700 dark:text-cyan-300">
+                          {sec.topicName}
+                        </span>
                       </h3>
                     </div>
                     <SectorOrbitIcon sectorId={sec.id} theme={theme} />
@@ -230,7 +232,7 @@ export function SpaceSectorMap({
                 </div>
 
                 <div className="mt-4 space-y-3 border-t border-slate-100 pt-3.5 dark:border-slate-800/80">
-                  <div className="grid grid-cols-4 gap-1 text-[11px]">
+                  <div className="grid grid-cols-3 gap-1 text-[11px]">
                     {tasks.map((t) => (
                       <div
                         key={t.label}

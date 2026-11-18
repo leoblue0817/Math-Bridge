@@ -109,7 +109,7 @@ export function WrongReviewModal({
               <CheckCircle2 className="mx-auto h-10 w-10 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
               <div className="mt-3 text-base font-bold">目前沒有待複習錯題！</div>
               <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">
-                到各主題星球完成「小節微關卡」時，如果有答錯的題目會自動收錄到這裡喔。
+                到各主題星球進行「實戰演練」時，如果有答錯的題目會自動收錄到這裡喔。
               </p>
             </div>
           ) : (
