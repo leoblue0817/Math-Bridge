@@ -87,7 +87,7 @@ export function SpaceSectorMap({
               探索 8 大數學星球，完成簡報、8 題實戰演練與創意對戰
             </h1>
             <p className="text-sm leading-relaxed text-slate-700 md:text-base dark:text-slate-300">
-              每個星域都配有互動實驗簡報、基礎＋進階共 8 題實戰演練，以及點格對決、KenKen 算獨、摺摺稱奇、數連 Numberlink、等值算式連線、電子鐘火柴棒、指數獎勵倍增戰與神秘三視圖等創意對決。
+              每個星域都配有互動實驗簡報、基礎＋進階共 8 題實戰演練，以及點格對決、KenKen 算獨、摺摺稱奇、數連 Numberlink、等值連線＆火眼金睛、電子鐘火柴棒、指數獎勵倍增戰與神秘三視圖等創意對決。
             </p>
           </div>
 

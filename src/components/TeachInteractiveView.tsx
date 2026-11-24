@@ -26,8 +26,8 @@ export function SectorMiniExplorer({ sectorId }: { sectorId: SectorId }) {
   // s4: 加法與乘法原理 (n 邊形對角線)
   const [sides, setSides] = useState(5);
 
-  // s5: 運算規則 (正數去括號與分配律天平)
-  const [ruleCase, setRuleCase] = useState<0 | 1 | 2>(0);
+  // s5: 運算法則 (去括號四天王正數生活天平)
+  const [ruleCase, setRuleCase] = useState<0 | 1 | 2 | 3>(0);
 
   // s6: 數形規律 (正方形與三角形點陣)
   const [figN, setFigN] = useState(5);
@@ -338,59 +338,83 @@ export function SectorMiniExplorer({ sectorId }: { sectorId: SectorId }) {
   if (sectorId === 's5') {
     const cases = [
       {
-        title: '① 括號前是「－」：去括號要變號',
-        expr: '635 － (235 － 48)',
-        unbracketed: '635 － 235 ＋ 48',
-        value: 448,
-        story: '原本要買 235 元的書，現場折價 48 元（實付 187 元）。先從 635 元扣掉 235 元，再把多扣的 48 元「＋回來」，剩 448 元！',
+        shortLabel: '連減總和',
+        badge: 'a − (b + c) ＝ a − b − c',
+        title: '天王 1 · 連減總支出（括號前是「－」，裡面的「＋」變「－」）',
+        expr: '500 － (180 ＋ 120)',
+        unbracketed: '500 － 180 － 120',
+        value: '200 元',
+        story:
+          '小明帶 500 元買 180 元書和 120 元筆袋：先加總再付 300 元，跟一樣一樣連續扣錢（500－180－120），最後都剩 200 元！',
       },
       {
-        title: '② 括號前是「÷」：連除與變號',
-        expr: '720 ÷ (8 × 9)',
-        unbracketed: '720 ÷ 8 ÷ 9',
-        value: 10,
-        story: '720 顆糖果要平分給 8×9=72 人，等於「先平分給 8 班，每班再平分給 9 人」，所以括號內的「×」要變成「÷」！',
+        shortLabel: '折價補加',
+        badge: 'a − (b − c) ＝ a − b + c',
+        title: '天王 2 · 折價退款（括號前是「－」，裡面的「－」變「＋」）',
+        expr: '500 － (240 － 40)',
+        unbracketed: '500 － 240 ＋ 40',
+        value: '300 元',
+        story:
+          '小華帶 500 元買原價 240 元背包、特價折 40 元：先付原價 240 元多扣了 40 元折扣，老闆把 40 元退還補加回來，實剩 300 元！',
       },
       {
-        title: '③ 乘法分配律拆解湊整',
-        expr: '25 × (40 ＋ 4)',
-        unbracketed: '25 × 40 ＋ 25 × 4',
-        value: 1100,
-        story: '把「44 盒各 25 顆」拆成「40 盒＋4 盒」，兩邊各自乘以 25 得到 1000 ＋ 100 ＝ 1100，完全不用列直式！',
+        shortLabel: '分裝連除',
+        badge: 'a ÷ (b × c) ＝ a ÷ b ÷ c',
+        title: '天王 3 · 分裝再裝箱（括號前是「÷」，裡面的「×」變「÷」）',
+        expr: '360 ÷ (10 × 6)',
+        unbracketed: '360 ÷ 10 ÷ 6',
+        value: '6 箱',
+        story:
+          '360 片餅乾每 10 片裝 1 袋、每 6 袋裝 1 箱：先算 1 箱 60 片再除，跟先分裝成 36 袋再裝箱，結果都是 6 箱！',
+      },
+      {
+        shortLabel: '切小變多',
+        badge: 'a ÷ (b ÷ c) ＝ a ÷ b × c',
+        title: '天王 4 · 每段切小段數變多（括號前是「÷」，裡面的「÷」變「×」）',
+        expr: '240 ÷ (30 ÷ 3)',
+        unbracketed: '240 ÷ 30 × 3',
+        value: '24 小段',
+        story:
+          '240 公分彩帶原每 30 公分剪 1 大段（共 8 段），改把每大段平分 3 小段：除數縮小 3 倍、份數放大 3 倍，變成 8 × 3 ＝ 24 小段！',
       },
     ];
     const active = cases[ruleCase];
     return (
-      <div className="rounded-xl border border-orange-200 bg-orange-50/55 p-4 shadow-sm sm:p-5 dark:border-orange-500/30 dark:bg-[#080D1A] dark:shadow-none">
+      <div className="space-y-4 rounded-xl border border-orange-200 bg-orange-50/55 p-4 shadow-sm sm:p-5 dark:border-orange-500/30 dark:bg-[#080D1A] dark:shadow-none">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <div className="text-xs font-bold text-orange-700 dark:text-amber-300">
-              互動等值天平 · 正數去括號 ＆ 分配律實驗器（不含負數）
+              互動等值天平 · 「去括號四天王」正數生活實驗室
             </div>
             <h3 className="mt-0.5 text-sm font-bold text-slate-900 sm:text-base dark:text-white">
-              切換運算情境，親眼驗證去括號前後兩邊數值完全平衡
+              點選講義四大生活情境，親眼驗證只有括號前是「－」或「÷」才會變號
             </h3>
           </div>
           <div className="flex flex-wrap gap-1.5">
             {cases.map((c, idx) => (
               <button
-                key={idx}
+                key={c.shortLabel}
                 type="button"
-                onClick={() => setRuleCase(idx as 0 | 1 | 2)}
-                className={`min-h-[36px] rounded-lg px-2.5 py-1 text-xs font-bold ${
+                onClick={() => setRuleCase(idx as 0 | 1 | 2 | 3)}
+                className={`min-h-[38px] rounded-lg px-2.5 py-1 text-xs font-bold transition-colors ${
                   ruleCase === idx
                     ? 'bg-orange-600 text-white dark:bg-amber-400 dark:text-slate-950'
-                    : 'border border-slate-200 bg-white text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200'
+                    : 'border border-slate-200 bg-white text-slate-700 hover:border-orange-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200'
                 }`}
               >
-                情境 {idx + 1}
+                {idx + 1}. {c.shortLabel}
               </button>
             ))}
           </div>
         </div>
 
-        <div className="mt-3 space-y-3 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900/70">
-          <div className="text-xs font-bold text-orange-700 dark:text-orange-300">{active.title}</div>
+        <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900/70">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="text-xs font-bold text-orange-700 dark:text-orange-300">{active.title}</span>
+            <span className="font-mono text-xs font-bold text-slate-500 dark:text-slate-400">
+              {active.badge}
+            </span>
+          </div>
           <div className="grid grid-cols-1 items-center gap-3 text-center sm:grid-cols-11">
             <div className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2.5 font-mono text-base font-extrabold text-sky-900 sm:col-span-5 dark:border-cyan-500/40 dark:bg-cyan-500/15 dark:text-cyan-200">
               {active.expr} ＝ {active.value}
@@ -403,6 +427,32 @@ export function SectorMiniExplorer({ sectorId }: { sectorId: SectorId }) {
             </div>
           </div>
           <p className="text-xs leading-relaxed text-slate-600 dark:text-slate-300">{active.story}</p>
+        </div>
+
+        {/* 2x2 去括號四天王速查口訣表 */}
+        <div className="rounded-xl border border-slate-200 bg-white/90 p-3.5 dark:border-slate-800 dark:bg-slate-900/50">
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+            <span className="font-bold text-slate-900 dark:text-white">
+              去括號四天王速查（只有這 4 種情況需要變號）
+            </span>
+            <span className="font-bold text-amber-700 dark:text-amber-300">
+              口訣：「加、乘在前直接去；減、除在前裡面變！」
+            </span>
+          </div>
+          <div className="mt-2.5 grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">
+            <div className="rounded-lg border border-rose-200/80 bg-rose-50/60 px-3 py-2 dark:border-rose-500/25 dark:bg-rose-500/10">
+              <div className="font-bold text-rose-800 dark:text-rose-200">連加減（括號前是「－」）</div>
+              <div className="mt-1 font-mono text-[11px] text-slate-700 dark:text-slate-200">
+                a − (b + c) ＝ a − b − c ｜ a − (b − c) ＝ a − b + c
+              </div>
+            </div>
+            <div className="rounded-lg border border-sky-200/80 bg-sky-50/60 px-3 py-2 dark:border-cyan-500/25 dark:bg-cyan-500/10">
+              <div className="font-bold text-sky-800 dark:text-cyan-200">連乘除（括號前是「÷」）</div>
+              <div className="mt-1 font-mono text-[11px] text-slate-700 dark:text-slate-200">
+                a ÷ (b × c) ＝ a ÷ b ÷ c ｜ a ÷ (b ÷ c) ＝ a ÷ b × c
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     );
